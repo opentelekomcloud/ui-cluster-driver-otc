@@ -37,7 +37,7 @@
       </div>
     {{/accordion-list-item}}
 
-    {{#if (gte step 0)}}
+    {{#if (gte step 2)}}  <!-- FIXME: use steps after debug -->
       {{#accordion-list-item title=(t 'cluster.cluster.title')
                              expandOnInit=true
                              expandAll=al.expandAll
@@ -58,7 +58,6 @@
             {{#input-or-display editable=false  value=config.clusterType}}
               {{new-select class="form-control"
                            content=clusterTypeChoices
-                           selected=defaultClusterType
                            value=config.clusterType
               }}
             {{/input-or-display}}
@@ -85,7 +84,7 @@
       {{/accordion-list-item}}
     {{/if}}
 
-    {{#if (gte step 0)}}
+    {{#if (gte step 3)}}
       {{#accordion-list-item title=(t 'cluster.network.title')
                              detail=(t 'cluster.network.detail')
                              expandOnInit=true
@@ -116,26 +115,30 @@
         </div>
         <div class="row">
           <div class="col span-6 mb-0">
-            <label>{{t 'cluster.networkMode.label'}}{{field-required}}</label>
-            {{#input-or-display editable=(eq mode "new")  value=config.networkMode}}
+            <label>{{t 'cluster.containerNetworkMode.label'}}{{field-required}}</label>
+            {{#input-or-display editable=(eq mode "new")  value=config.containerNetworkMode}}
               {{new-select class="form-control"
                            content=networkModeChoices
-                           value=config.networkMode
+                           value=config.containerNetworkMode
               }}
             {{/input-or-display}}
           </div>
           <div class="col span-6 mb-0">
-            <label>{{t 'cluster.networkCIDR.label'}}{{field-required}}</label>
-            {{#input-or-display editable=(eq mode "new")  value=config.networkCIDR}}
-              {{input type="text" name="subnet-name" placeholder=(t 'cluster.networkCIDR.placeholder')
-                      classNames="form-control" value=config.networkCIDR}}
+            <label>{{t 'cluster.containerNetworkCIDR.label'}}{{field-required}}</label>
+            {{#input-or-display
+                    editable=(eq mode "new")
+                    value=config.containerNetworkCIDR}}
+              {{input type="text"
+                      name="subnet-name"
+                      classNames="form-control"
+                      value=config.containerNetworkCIDR}}
             {{/input-or-display}}
           </div>
         </div>
       {{/accordion-list-item}}
     {{/if}}
 
-    {{#if (gte step 0)}}
+    {{#if (gte step 4)}}
       {{#accordion-list-item title=(t 'cluster.node.title')
                              detail=(t 'cluster.node.detail')
                              expandOnInit=true
@@ -145,13 +148,13 @@
         <div class="row">
           <div class="col span-6 mb-0">
             <label>{{t 'cluster.nodeFlavor.label'}}{{field-required}}</label>
-            {{#input-or-display editable=(eq mode "new")  value=config.vpcName}}
+            {{#input-or-display editable=(eq mode "new")  value=config.nodeFlavor}}
               {{input type="text"
                       name="node-flavor"
                       placeholder=(t 'cluster.nodeFlavor.placeholder')
                       classNames="form-control"
                       detail=(t 'cluster.nodeFlavor.detail')
-                      value=config.vpcName}}
+                      value=config.nodeFlavor}}
             {{/input-or-display}}
           </div>
           <div class="col span-6 mb-0">
@@ -178,7 +181,7 @@
       {{/accordion-list-item}}
     {{/if}}
 
-    {{#if (gte step 0)}}
+    {{#if (gte step 5)}}
       {{#accordion-list-item title=(t 'cluster.disk.title')
                              detail=(t 'cluster.disk.detail')
                              expandOnInit=true
@@ -187,47 +190,123 @@
       }}
         <div class="row">
           <div class="col span-6 mb-0">
-            <label>{{t 'cluster.rootDiskType.label'}}{{field-required}}</label>
+            <label>{{t 'cluster.rootVolumeType.label'}}{{field-required}}</label>
             {{#input-or-display
                     editable=(eq mode "new")
-                    value=config.rootDiskType}}
+                    value=config.rootVolumeType}}
               {{new-select class="form-control"
                            content=diskTypeChoices
-                           value=config.rootDiskType
+                           value=config.rootVolumeType
               }}
             {{/input-or-display}}
           </div>
           <div class="col span-6 mb-0">
-            <label>{{t 'cluster.rootDiskSize.label'}}{{field-required}}</label>
-            {{#input-or-display editable=(eq mode "new") value=config.rootDiskSize}}
+            <label>{{t 'cluster.rootVolumeSize.label'}}{{field-required}}</label>
+            {{#input-or-display editable=(eq mode "new") value=config.rootVolumeSize}}
               {{input type="number" min=40 max=1000 name="root-size" classNames="form-control"
-                      value=config.rootDiskSize}}
+                      value=config.rootVolumeSize}}
             {{/input-or-display}}
           </div>
         </div>
         <div class="row">
           <div class="col span-6 mb-0">
-            <label>{{t 'cluster.dataDiskType.label'}}{{field-required}}</label>
+            <label>{{t 'cluster.dataVolumeType.label'}}{{field-required}}</label>
             {{#input-or-display
                     editable=(eq mode "new")
-                    value=config.dataDiskType}}
+                    value=config.dataVolumeType}}
               {{new-select class="form-control"
                            content=diskTypeChoices
-                           value=config.dataDiskType
+                           value=config.dataVolumeType
               }}
             {{/input-or-display}}
           </div>
           <div class="col span-6 mb-0">
-            <label>{{t 'cluster.dataDiskSize.label'}}{{field-required}}</label>
-            {{#input-or-display editable=(eq mode "new") value=config.dataDiskSize}}
-              {{input type="number" min=100 max=1000 name="root-size" classNames="form-control"
-                      value=config.dataDiskSize}}
+            <label>{{t 'cluster.dataVolumeSize.label'}}{{field-required}}</label>
+            {{#input-or-display editable=(eq mode "new") value=config.dataVolumeSize}}
+              {{input type="number"
+                      min=100 max=1000
+                      name="data-size"
+                      classNames="form-control"
+                      value=config.dataVolumeSize}}
             {{/input-or-display}}
           </div>
         </div>
       {{/accordion-list-item}}
     {{/if}}
+    {{#if (gte step 6)}}
+      {{#accordion-list-item title=(t 'cluster.loadbalancer.title')
+                             detail=(t 'cluster.loadbalancer.detail')
+                             expandOnInit=true
+                             expandAll=al.expandAll
+                             expand=(action expandFn)
+      }}
+        <div class="row">
+          <div class="col span-6 mb-0">
+            <label>{{t 'cluster.createLoadBalancer.label'}}</label>
+            {{#input-or-display
+                    editable=(eq mode "new")
+                    value=config.createLoadBalancer}}
+              {{input type="checkbox"
+                      name="use-lb"
+                      checked=config.createLoadBalancer
+              }}
+            {{/input-or-display}}
+          </div>
+        </div>
+        {{#if needLB}}
+          <br/>
+          <div class="row">
+            <label>{{t 'cluster.newEIP.label'}}</label>
+            {{#radio-button
+                    name="new-or-ex"
+                    selection=newEIP
+                    value=true
+            }}
+            {{/radio-button}}
+          </div>
+          <div class="row">
+            <label>{{t 'cluster.oldEIP.label'}}</label>
+            {{#radio-button
+                    name="new-or-ex"
+                    value=false
+                    selection=newEIP
+            }}
+            {{/radio-button}}
+          </div>
+          <div class="row">
 
+            {{#if needNewClusterEIP}}
+              <div class="col span-6 mb-0">
+                <label>{{t 'cluster.lbBandwidth.label'}}</label>
+                {{#input-or-display
+                        editable=(eq mode "new")
+                        value=config.lbEIPBandwidthSize}}
+                  {{input type="number"
+                          name="lb-bandwidth"
+                          min=10
+                          max=1000
+                          value=config.lbEIPBandwidthSize
+                  }}
+                {{/input-or-display}}
+              </div>
+            {{else}}
+              <div class="col span-6 mb-0">
+                <label>{{t 'cluster.lbFloatingIP.label'}}</label>
+                {{#input-or-display
+                        editable=(eq mode "new")
+                        value=config.lbFloatingIP}}
+                  {{input type="text"
+                          placeholder=(t 'cluster.lbFloatingIP.placeholder')
+                          name="existing-ip"
+                          value=config.lbFloatingIP
+                  }}
+                {{/input-or-display}}
+              </div>
+            {{/if}}
+          </div>
+        {{/if}}
+      {{/accordion-list-item }}
+    {{/if}}
   {{/accordion-list}}
 
   {{save-cancel editing=(eq mode 'edit')
@@ -236,7 +315,6 @@
                 createLabel=createLabel
   }}
 
-  {{!-- This component shows errors produced by validate() in the component --}}
   {{top-errors errors=errors}}
 
 </section>

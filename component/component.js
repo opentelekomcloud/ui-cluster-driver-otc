@@ -41,6 +41,7 @@ const clusterFlavors = [
   'cce.t2.medium',
   'cce.t2.large',
 ]
+const defaultClusterFlavor = 'cce.s1.medium'
 const clusterFlavorDetails = `Cluster flavor, which cannot be changed after the cluster is created.
 
     cce.s1.small: small-scale, single-master VM cluster (≤ 50 nodes)
@@ -79,6 +80,10 @@ const k8sVersions = {
   'v1.13':  'v1.13.10-r0',
   'v1.11':  'v1.11.7-r2',
 }
+const defaultBandwidth = 100
+const defaultFloatingIPType = '5_bgp'
+const defaultShareType = 'PER'
+const defaultCIDR = "192.168.0.0/16"
 const authModes = {
   RBAC: 'rbac',
   x509: 'x509',
@@ -88,6 +93,7 @@ const networkModes = {
   'Underlay IPVLAN': 'underlay_ipvlan',
   'VPC Router':      'vpc-router,',
 }
+const defaultNetworkMode = 'overlay_l2'
 
 /**
  * Convert string array to field array
@@ -115,7 +121,7 @@ function field(label, placeholder = '', detail = '') {
   }
 }
 
-function chapter(title, next, detail = '') {
+function chapter(title, detail = '', next) {
   return {
     title:  title,
     next:   next,
@@ -126,113 +132,151 @@ function chapter(title, next, detail = '') {
 const languages = {
   'en-us': {
     cluster: {
-      auth:               chapter(
-        'OTC Account Configuration',
+      auth:                    chapter(
+        'Account Configuration',
+        'OTC credentials',
         'Next: Configure Cluster',
       ),
-      'ak/sk':            field('Use AK/SK auth'),
+      'ak/sk':                 field('Use AK/SK auth'),
       // ak/sk auth:
-      accessKey:          field('Access Key ID'),
-      secretKey:          field('Secret Access key'),
+      accessKey:               field('Access Key ID'),
+      secretKey:               field('Secret Access key'),
       // token-based auth:
-      token:              field('Token'),
-      domainName:         field('Domain Name', 'OTC00000000000000000XXX'),
-      username:           field('Username'),
-      password:           field('Password'),
-      projectName:        field('Project Name', 'eu-de'),
+      token:                   field('Token'),
+      domainName:              field('Domain Name', 'OTC00000000000000000XXX'),
+      username:                field('Username'),
+      password:                field('Password'),
+      projectName:             field('Project Name', 'eu-de'),
       // cluster config
-      cluster:            chapter(
+      cluster:                 chapter(
         'Cluster Configuration',
+        'General cluster configuration',
         'Next: Network configuration',
-        'General cluster configuration'
       ),
-      clusterType:        field(
+      clusterType:             field(
         'Cluster Type'
       ),
-      clusterVersion:     field(
+      clusterVersion:          field(
         'Kubernetes Version',
         'Version of kubernetes installed on cluster'
       ),
-      clusterFlavor:      field(
+      clusterFlavor:           field(
         'Cluster Flavor',
         '',
         clusterFlavorDetails,
       ),
-      clusterLabels:      field('Cluster Labels'),
-      nodeCount:          field('Node Count'),
+      clusterLabels:           field('Cluster Labels'),
+      nodeCount:               field('Node Count'),
       // network info
-      network:            chapter(
+      network:                 chapter(
         'Network configuration',
-        'Next: Nodes basic configuration',
         'Networking configuration',
+        'Next: Cluster Floating IP',
       ),
-      vpcName:            field(
+      vpcName:                 field(
         'Virtual Private Cloud',
         'vpc-01',
         'Name of VPC (existing or new)',
       ),
-      subnetName:         field(
+      subnetName:              field(
         'Subnet',
         'subnet-01',
         'Name of Subnet (existing or new)',
       ),
-      networkMode:        field('Network Mode'),
-      networkCIDR:        field('Cluster Network CIDR', '192.168.0.0/20'),
+      containerNetworkMode:    field('Container Network Mode'),
+      containerNetworkCIDR:    field('Container Network CIDR'),
+      // Cluster eip options
+      masterFloatingIP:        chapter(
+        'Cluster Floating IP',
+        'Floating IP configuration for master node',
+        'Next: Node Configuration'
+      ),
+      clusterFloatingIP:       field(
+        'Existing floating IP',
+        '0.0.0.0',
+      ),
+      clusterEIPBandwidthSize: field(
+        'Bandwidth Size',
+      ),
       // node config
-      node:               chapter(
+      node:                    chapter(
         'Node Configuration',
         'Next: Nodes disk configuration',
         'Configure instances used as cluster nodes',
       ),
-      nodeFlavor:         field(
+      nodeFlavor:              field(
         'Node Flavor',
         '',
         `See ${instanceFlavorReference} for available flavors`,
       ),
-      availabilityZone:   field('Availability Zone'),
-      useExistingKeyPair: field('Use existing key pair'),
-      keyPair:            field('SSH Key Pair'),
-      publicKey:          field('Nodes public key'),
+      availabilityZone:        field('Availability Zone'),
+      useExistingKeyPair:      field('Use existing key pair'),
+      keyPair:                 field('SSH Key Pair'),
+      publicKey:               field('Nodes public key'),
       // disk config
-      disk:               chapter(
+      disk:                    chapter(
         'Disks Configuration',
         'Finish',
         'Configure the disks attached to node instances',
       ),
-      rootDiskSize:       field(
+      rootVolumeSize:          field(
         'Root Disk Size, GB',
         '40',
         'Minimum 40 GB'
       ),
-      rootDiskType:       field('Root Disk Type'),
-      dataDiskSize:       field(
+      rootVolumeType:          field('Root Disk Type'),
+      dataVolumeSize:          field(
         'Data Disk Size, GB',
         '100',
         'Minimum 100 GB'
       ),
-      dataDiskType:       field('Data Disk Type'),
+      dataVolumeType:          field('Data Disk Type'),
+      // LB bandwidth config
+      loadbalancer:            chapter(
+        'Loadbalancer Bandwidth',
+        'Configure LB bandwidth',
+        'Finish & Create Cluster'
+      ),
+      createLoadBalancer:      field('Use load balancer for node access'),
+      newEIP:                  field('Create New Floating IP'),
+      oldEIP:                  field('Use Existing Floating IP'),
+      lbFloatingIP:            field(
+        'Existing Floating IP',
+        '0.0.0.0',
+      ),
+      lbBandwidth:             field(
+        'Bandwidth Size (MBit/s)',
+      ),
     }
   }
 };
 // cluster configuration steps
-const Steps = Object.freeze({ auth: 1, cluster: 2, network: 3, node: 4, disk: 5 })
+const Steps = Object.freeze({
+  auth:       1,
+  cluster:    2,
+  network:    3,
+  clusterEIP: 4,
+  node:       5,
+  disk:       6,
+  lbEIP:      7,
+})
 
 /*!!!!!!!!!!!DO NOT CHANGE START!!!!!!!!!!!*/
 export default Ember.Component.extend(ClusterDriver, {
   driverName:  '%%DRIVERNAME%%',
-  configField: '%%DRIVERNAME%%EngineConfig', // 'googleKubernetesEngineConfig'
+  configField: '%%DRIVERNAME%%EngineConfig', // 'otcEngineConfig'
+  config:      alias('cluster.%%DRIVERNAME%%EngineConfig'),
   app:         service(),
   router:      service(),
   /*!!!!!!!!!!!DO NOT CHANGE END!!!!!!!!!!!*/
   intl:        service(),
-  config:      alias('cluster.%%DRIVERNAME%%EngineConfig'),
 
-  isNew:                equal('mode', 'new'),
-  editing:              equal('mode', 'edit'),
-  lanChanged:           null,
-  refresh:              false,
-  step:                 Steps.auth,
-  defaultClusterFlavor: 'cce.s1.medium',
+  isNew:      equal('mode', 'new'),
+  editing:    equal('mode', 'edit'),
+  lanChanged: null,
+  refresh:    false,
+  step:       100,
+
   init() {
     /*!!!!!!!!!!!DO NOT CHANGE START!!!!!!!!!!!*/
     // This does on the fly template compiling, if you mess with this :cry:
@@ -254,52 +298,59 @@ export default Ember.Component.extend(ClusterDriver, {
 
     if (!config) {
       config = get(this, 'globalStore').createRecord({
-        type:               configField,
+        type:                    configField,
         // authentication
         // ak/sk
-        accessKey:          '',
-        secretKey:          '',
+        accessKey:               '',
+        secretKey:               '',
         // token auth
-        token:              '',
-        username:           '',
-        password:           '',
-        domainName:         '',
-        projectName:        '',
-        region:             'eu-de',
+        token:                   '',
+        username:                '',
+        password:                '',
+        domainName:              '',
+        projectName:             '',
+        region:                  'eu-de',
         // cluster settings
-        clusterName:        '',
-        clusterVersion:     '',
-        clusterType:        'VirtualMachine',
-        clusterFlavor:      '',
-        nodeCount:          2,
-        clusterLabels:      [],
+        clusterName:             '',
+        displayName:             '',
+        clusterVersion:          '',
+        clusterType:             'VirtualMachine',
+        clusterFlavor:           defaultClusterFlavor,
+        nodeCount:               2,
+        clusterLabels:           ['origin=rancher-otc'],
         // cluster networking
-        vpcName:            '',
-        subnetName:         '',
-        networkMode:        '',
-        networkCIDR:        '',
+        vpc:                     '',
+        subnet:                  '',
+        containerNetworkMode:    defaultNetworkMode,
+        containerNetworkCIDR:    defaultCIDR,
+        // master eip
+        clusterFloatingIP:       '',
+        clusterEIPBandwidthSize: defaultBandwidth,
+        clusterEIPType:          defaultFloatingIPType,
+        clusterEIPShareType:     defaultShareType,
         // nodes auth
-        authenticationMode: '',
-        authProxyCA:        '',
-        clusterFloatingIP:  '',
+        authenticationMode:      authModes.RBAC,
+        authProxyCA:             '',
         // nodes config
-        availabilityZone:   '',
-        nodeFlavor:         '',
-        nodeOS:             os,
-        keyPair:            '',
+        availabilityZone:        '',
+        nodeFlavor:              '',
+        nodeOS:                  os,
+        keyPair:                 '',
         // node disks
-        rootDiskSize:       40,
-        dataDiskSize:       100,
-        rootDiskType:       diskTypes[0],
-        dataDiskType:       diskTypes[0],
-        // LB bandwidth
-        useLBFloatingIP:    true,
-        lbFloatingIP:       '',
-        bandwidthInMbps:    1000,
-        floatingIPType:     'bgp_5',
-        shareType:          'PER',
+        rootVolumeSize:          40,
+        dataVolumeSize:          100,
+        rootVolumeType:          diskTypes[0],
+        dataVolumeType:          diskTypes[0],
+        // LB config
+        createLoadBalancer:      true,
+        lbFloatingIP:            '',
+        lbEIPBandwidthSize:      defaultBandwidth,
+        lbEIPType:               defaultFloatingIPType,
+        lbEIPShareType:          defaultShareType,
       });
       set(this, 'config', config);
+      set(this, `cluster.${ configField }`, config);
+      set(this, 'cluster.driver', get(this, 'driverName'));
     }
   },
 
@@ -312,8 +363,10 @@ export default Ember.Component.extend(ClusterDriver, {
           return this.toClusterConfig(cb);
         case Steps.cluster:
           return this.toNetworkConfig(cb);
+        default:
+          console.log('Saving driver with config: \n' + JSON.stringify(get(this, 'cluster')))
+          this.send('driverSave', cb);
       }
-      //set(this, 'isSavingCluster', true);
     },
     cancel() {
       // probably should not remove this as its what every other driver uses to get back
@@ -331,21 +384,6 @@ export default Ember.Component.extend(ClusterDriver, {
       errors.push('Name is required');
     }
 
-    // Add more specific errors
-
-    if (parseInt(get(this, 'config.rootDiskSize'), 40) < 40) {
-      errors.push('Root disk must me at least 40 GB')
-    }
-
-    if (parseInt(get(this, 'config.dataDiskSize')) < 100) {
-      errors.push('Data disk must me at least 100 GB')
-    }
-
-    // Check something and add an error entry if it fails:
-    // if ( parseInt(get(this, 'config.memorySize'), defaultRadix) < defaultBase ) {
-    //   errors.push('Memory Size must be at least 1024 MB');
-    // }
-
     // Set the array of errors for display,
     // and return true if saving should continue.
     if (get(errors, 'length')) {
@@ -362,7 +400,6 @@ export default Ember.Component.extend(ClusterDriver, {
   clusterVersionChoices: m2f(k8sVersions),
   clusterFlavorChoices:  a2f(clusterFlavors),
   clusterTypeChoices:    clusterTypes,
-  defaultClusterType:    clusterTypes[0].label,
   diskTypeChoices:       a2f(diskTypes),
   networkModeChoices:    m2f(networkModes),
 
@@ -370,7 +407,7 @@ export default Ember.Component.extend(ClusterDriver, {
     const step = get(this, 'step')
     switch (step) {
       case Steps.auth:
-        return get(this, 'authFieldsMissing')
+        return this.authFieldsMissing
       case Steps.cluster:
         return 'cluster.cluster.next'
       case Steps.network:
@@ -387,7 +424,7 @@ export default Ember.Component.extend(ClusterDriver, {
   }),
 
 
-  createLabel: computed('step', function () {
+  createLabel:       computed('step', function () {
     const step = get(this, 'step')
     switch (step) {
       case Steps.auth:
@@ -400,20 +437,36 @@ export default Ember.Component.extend(ClusterDriver, {
         return 'cluster.node.next'
       case Steps.disk:
         return 'cluster.disk.next'
+      default:
+        return 'UNKNOWN STEP'
     }
   }),
+  needLB:            computed('config.createLoadBalancer', function () {
+    return get(this, 'config.createLoadBalancer')
+  }),
+  newEIP:            true,
+  needNewClusterEIP: computed('needLB', 'newEIP', function () {
+    return get(this, 'needLB') && get(this, 'newEIP')
+  }),
 
+  clusterNameChanged: observer('cluster.name', function () {
+    const name = get(this, 'cluster.name')
+    console.log('Cluster name is ' + name + ' now')
+    set(this, 'config.clusterName', name)
+    set(this, 'config.name', name)
+    set(this, 'config.displayName', name)
+  }),
 
-  languageChanged:    observer('intl.locale', function () {
+  languageChanged: observer('intl.locale', function () {
     const lang = get(this, 'intl.locale');
     if (lang) {
       this.loadLanguage(lang[0]);
     }
   }),
-  clusterNameChanged: observer('cluster.name', function () {
-    const clusterName = get(this, 'cluster.name');
-    set(this, 'config.clusterName', clusterName);
-  }),
+
+  handleEIPFields(val) {
+    set(this, 'newOrExistingEIP', val)
+  },
 
   loadLanguage(lang) {
     const translation = languages[lang];
