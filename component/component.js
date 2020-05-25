@@ -19,6 +19,7 @@ const set = Ember.set;
 const alias = Ember.computed.alias;
 const service = Ember.inject.service;
 const all = Ember.RSVP.all;
+const reject = Ember.RSVP.reject;
 
 const equal = Ember.computed.equal;
 const next = Ember.run.next;
@@ -94,6 +95,7 @@ const networkModes = {
   'VPC Router':      'vpc-router,',
 }
 const defaultNetworkMode = 'overlay_l2'
+const authURL = 'iam.eu-de.otc.t-systems.com/v3/auth/tokens'
 
 /**
  * Convert string array to field array
@@ -275,7 +277,8 @@ export default Ember.Component.extend(ClusterDriver, {
   editing:    equal('mode', 'edit'),
   lanChanged: null,
   refresh:    false,
-  step:       100,
+  step:       Steps.auth,
+  token:      null,
 
   init() {
     /*!!!!!!!!!!!DO NOT CHANGE START!!!!!!!!!!!*/
@@ -349,7 +352,7 @@ export default Ember.Component.extend(ClusterDriver, {
         lbEIPShareType:          defaultShareType,
       });
       set(this, 'config', config);
-      set(this, `cluster.${ configField }`, config);
+      set(this, `cluster.${configField}`, config);
       set(this, 'cluster.driver', get(this, 'driverName'));
     }
   },
@@ -379,7 +382,7 @@ export default Ember.Component.extend(ClusterDriver, {
   validate() {
     // Get generic API validation errors
     this._super();
-    var errors = get(this, 'errors') || [];
+    const errors = get(this, 'errors') || [];
     if (!get(this, 'cluster.name')) {
       errors.push('Name is required');
     }
@@ -468,6 +471,46 @@ export default Ember.Component.extend(ClusterDriver, {
     set(this, 'newOrExistingEIP', val)
   },
 
+  authToken() {
+    const data = {
+      "auth": {
+        "identity": {
+          "methods":  [
+            "password"
+          ],
+          "password": {
+            "user": {
+              "name":     get(this, 'config.username'),
+              "password": get(this, 'config.password'),
+              "domain":   {
+                "name": get(this, 'config.domainName'),
+              }
+            }
+          }
+        },
+        "scope":    {
+          "project": {
+            "name": get(this, 'config.projectName'),
+          }
+        }
+      }
+    }
+    console.log('Authorizing client: ' + JSON.stringify(data))
+    return get(this, 'globalStore').rawRequest({
+      headers: { 'Content-Type': 'application/json' },
+      url:     `/meta/proxy/https:/${authURL}`,
+      method:  'POST',
+      data:    data,
+    }).then((resp) => {
+      const token = resp.body.token
+      set(this, 'token', token);
+      return resp.body.token
+    }).catch((resp) => {
+      set(this, 'errors', [JSON.stringify(resp.body.error)])
+      return reject()
+    })
+  },
+
   loadLanguage(lang) {
     const translation = languages[lang];
     const intl = get(this, 'intl');
@@ -480,20 +523,27 @@ export default Ember.Component.extend(ClusterDriver, {
       set(this, 'refresh', true);
       set(this, 'lanChanged', +new Date());
     });
-  },
+  }
+  ,
 
-  toClusterConfig(cb) {
+  async toClusterConfig(cb) {
     setProperties(this, {
-        'errors':             null,
+        'errors':             [],
         'config.username':    get(this, 'config.username').trim(),
         'config.domainName':  get(this, 'config.domainName').trim(),
         'config.projectName': get(this, 'config.projectName').trim(),
       }
     );
-    set(this, 'step', Steps.cluster)
-    console.log('Move to cluster configuration')
-    cb(true)
-  },
+    return all([this.authToken()]).then(() => {
+      console.log('Move to cluster configuration');
+      set(this, 'step', Steps.cluster);
+      cb(true)
+    }).catch(() => {
+      console.log('Failed to authorize')
+      cb(false)
+    })
+  }
+  ,
   toNetworkConfig(cb) {
     setProperties(this, {
         'errors':               null,
@@ -503,6 +553,8 @@ export default Ember.Component.extend(ClusterDriver, {
     set(this, 'step', Steps.network)
     console.log('Move to network configuration')
     cb(true)
-  },
+  }
+  ,
 
-});
+})
+;
