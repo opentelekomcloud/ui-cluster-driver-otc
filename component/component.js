@@ -224,8 +224,8 @@ const languages = {
       // node config
       node:                    chapter(
         'Node Configuration',
-        'Next: Nodes disk configuration',
         'Configure instances used as cluster nodes',
+        'Next: Nodes disk configuration',
       ),
       nodeFlavor:              field(
         'Node Flavor',
@@ -239,8 +239,8 @@ const languages = {
       // disk config
       disk:                    chapter(
         'Disks Configuration',
-        'Finish',
         'Configure the disks attached to node instances',
+        'Finish',
       ),
       rootVolumeSize:          field(
         'Root Disk Size, GB',
@@ -300,12 +300,11 @@ export default Ember.Component.extend(ClusterDriver, {
   refresh:    false,
   step:       Steps.auth,
 
-  token:       {},
-  nodeFlavors: [],
-  vpcs:        [],
-  subnets:     [],
-  vpcEndpoint: '',
-  ecsEndpoint: '',
+  token:        {},
+  vpcs:         [],
+  subnets:      [],
+  vpcEndpoint:  '',
+  novaEndpoint: '',
 
   init() {
     /*!!!!!!!!!!!DO NOT CHANGE START!!!!!!!!!!!*/
@@ -390,9 +389,11 @@ export default Ember.Component.extend(ClusterDriver, {
       const step = get(this, 'step')
       switch (step) {
         case Steps.auth:
-          return this.toClusterConfig(cb);
+          return this.toClusterConfig(cb)
         case Steps.cluster:
-          return this.toNetworkConfig(cb);
+          return this.toNetworkConfig(cb)
+        case Steps.network:
+          return this.toNodeConfig(cb)
         default:
           console.log('Saving driver with config: \n' + JSON.stringify(get(this, 'cluster')))
           this.send('driverSave', cb);
@@ -545,9 +546,9 @@ export default Ember.Component.extend(ClusterDriver, {
       token.catalog.forEach((srv) => {
         const region = get(this, 'config.region')
         switch (srv.name) {
-          case 'ecs':
-            console.log('ecs: ', JSON.stringify(srv))
-            set(this, 'ecsEndpoint', withRegion(srv, region))
+          case 'nova':
+            console.log('nova: ', JSON.stringify(srv))
+            set(this, 'novaEndpoint', withRegion(srv, region))
             break
           case 'vpc':
             console.log('vpc: ', JSON.stringify(srv))
@@ -564,9 +565,7 @@ export default Ember.Component.extend(ClusterDriver, {
     })
   },
 
-  vpcChoices: [],
-
-  updateVPCs() {
+  vpcChoices: computed('token', function () {
     const endpoint = viaProxy(get(this, 'vpcEndpoint'))
     console.log('vpc endpoint: ' + endpoint)
     return get(this, 'globalStore').rawRequest({
@@ -575,13 +574,11 @@ export default Ember.Component.extend(ClusterDriver, {
       method:  'GET',
     }).then((resp) => {
       const vpcs = resp.body.vpcs
-      set(this, 'vpcs', vpcs)
-      console.log('vpcs: ', get(this, 'vpcs'))
-      return vpcs
+      return vpcs.map((vpc) => ({ label: `${vpc.name}(${vpc.id})`, value: vpc.id }))
     }).catch(() => {
       return reject()
     })
-  },
+  }),
 
 
   subnetChoices: computed('config.vpcID', function () {
@@ -591,9 +588,8 @@ export default Ember.Component.extend(ClusterDriver, {
     }
     const endpoint = viaProxy(get(this, 'vpcEndpoint'))
     return get(this, 'globalStore').rawRequest({
-      params:  { vpc_id: vpcID },
       headers: this.commonHeaders(),
-      url:     `${endpoint}/subnets`,
+      url:     `${endpoint}/subnets?vpc_id=${vpcID}`,
       method:  'GET',
     }).then((resp) => {
       let subnets = resp.body.subnets
@@ -605,9 +601,49 @@ export default Ember.Component.extend(ClusterDriver, {
     })
   }),
 
-  updateNodeFlavors() {
+  nodeFlavorChoices: computed('token', function () {
+    const endpoint = viaProxy(get(this, 'novaEndpoint'))
+    return get(this, 'globalStore').rawRequest({
+      method:  'GET',
+      headers: this.commonHeaders(),
+      url:     `${endpoint}/flavors`
+    }).then((resp) => {
+      let flavors = resp.body.flavors
+      console.log('Flavors: ', flavors)
+      return flavors.map((f) => ({ label: f.name, value: f.id }))
+    }).catch(() => {
+      console.log('Failed to load node flavors')
+      return reject()
+    })
+  }),
 
-  },
+  keyPairChoices: computed('token', function () {
+    if (get(this, 'token') === '') {
+      return []
+    }
+    const endpoint = viaProxy(get(this, 'novaEndpoint'))
+    return get(this, 'globalStore').rawRequest({
+      method:  'GET',
+      headers: this.commonHeaders(),
+      url:     `${endpoint}/os-keypairs`
+    }).then((resp) => {
+      let keypairs = resp.body.keypairs
+      console.log('Received key pairs: ', keypairs)
+      return keypairs.map((k) => {
+        let name = k.keypair.name
+        if (name.length > 20) {
+          name = name.substring(0, 17) + '...'
+        }
+        return {
+          label: `${name} (${k.keypair.fingerprint})`,
+          value: k.keypair.name
+        }
+      })
+    }).catch(() => {
+      console.log('Failed to load key pairs')
+      return reject()
+    })
+  }),
 
   loadLanguage(lang) {
     const translation = languages[lang];
@@ -642,20 +678,18 @@ export default Ember.Component.extend(ClusterDriver, {
   },
   toNetworkConfig(cb) {
     setProperties(this, {
-        'errors':               null,
+        'errors':               [],
         'config.clusterFlavor': get(this, 'config.clusterFlavor').trim(),
       }
     );
     set(this, 'step', Steps.network)
-    this.updateVPCs().then((vpcList) => {
-      const vpcs = vpcList.map((vpc) => ({ label: `${vpc.name}(${vpc.id})`, value: vpc.id }))
-      set(this, 'vpcChoices', vpcs)
-      cb(true)
-    }).catch((e) => {
-      console.log('Failed to get VPCs: ' + e)
-      cb(false)
-    })
+    cb(true)
   },
+  toNodeConfig(cb) {
+    set(this, 'errors', [])
+    set(this, 'step', Steps.node)
+    cb(true)
+  }
 
 })
 ;

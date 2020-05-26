@@ -156,11 +156,10 @@
           <div class="col span-6 mb-0">
             <label>{{t 'cluster.nodeFlavor.label'}}{{field-required}}</label>
             {{#input-or-display editable=(eq mode "new")  value=config.nodeFlavor}}
-              {{input type="text"
+              {{searchable-select
                       name="node-flavor"
-                      placeholder=(t 'cluster.nodeFlavor.placeholder')
                       classNames="form-control"
-                      detail=(t 'cluster.nodeFlavor.detail')
+                      content=nodeFlavorChoices
                       value=config.nodeFlavor}}
             {{/input-or-display}}
           </div>
@@ -178,9 +177,10 @@
           <div class="col span-6 mb-0">
             <label>{{t 'cluster.keyPair.label'}}{{field-required}}</label>
             {{#input-or-display editable=(eq mode "new")  value=config.keyPair}}
-              {{input type="text"
+              {{searchable-select
                       name="key-pair"
                       classNames="form-control"
+                      content=keyPairChoices
                       value=config.keyPair}}
             {{/input-or-display}}
           </div>
