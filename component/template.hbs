@@ -94,22 +94,29 @@
         <div class="row">
           <div class="col span-6 mb-0">
             <label>{{t 'cluster.vpcName.label'}}{{field-required}}</label>
-            {{#input-or-display editable=(eq mode "new")  value=config.vpcName }}
-              {{input type="text"
-                      name="vpc-name"
-                      placeholder=(t 'cluster.vpcName.placeholder')
+            {{#input-or-display editable=(eq mode "new")  value=config.vpcID }}
+              {{searchable-select
+                      name="vpc-id"
+                      class="form-control"
                       classNames="form-control"
-                      value=config.vpcName}}
+                      selected=""
+                      content=vpcChoices
+                      value=config.vpcID
+              }}
+
             {{/input-or-display}}
           </div>
           <div class="col span-6 mb-0">
             <label>{{t 'cluster.subnetName.label'}}{{field-required}}</label>
-            {{#input-or-display editable=(eq mode "new")  value=config.subnetName}}
-              {{input type="text"
-                      name="subnet-name"
-                      placeholder=(t 'cluster.subnetName.placeholder')
+            {{#input-or-display editable=(eq mode "new")  value=config.subnetID}}
+              {{searchable-select
+                      name="subnet-id"
+                      class="form-control"
                       classNames="form-control"
-                      value=config.subnetName}}
+                      selected=""
+                      content=subnetChoices
+                      value=config.subnetID
+              }}
             {{/input-or-display}}
           </div>
         </div>

@@ -95,7 +95,7 @@ const networkModes = {
   'VPC Router':      'vpc-router,',
 }
 const defaultNetworkMode = 'overlay_l2'
-const authURL = 'iam.eu-de.otc.t-systems.com/v3/auth/tokens'
+const authURL = 'https://iam.eu-de.otc.t-systems.com/v3/auth/tokens'
 
 /**
  * Convert string array to field array
@@ -129,6 +129,27 @@ function chapter(title, detail = '', next) {
     next:   next,
     detail: detail,
   }
+}
+
+/**
+ * Convert external URL to rancher meta proxy's URL
+ * @param {string} url
+ * @returns {string}
+ */
+function viaProxy(url) {
+  url = url.replace('://', ':/')
+  return `/meta/proxy/${url}`
+}
+
+
+/**
+ * Select endpoint for current region for service
+ * @param service - object representing endpoint in token
+ * @param {string} region
+ */
+function withRegion(service, region) {
+  const endpoint = service.endpoints.find(ep => ep.region === region)
+  return endpoint.url
 }
 
 const languages = {
@@ -278,7 +299,13 @@ export default Ember.Component.extend(ClusterDriver, {
   lanChanged: null,
   refresh:    false,
   step:       Steps.auth,
-  token:      null,
+
+  token:       {},
+  nodeFlavors: [],
+  vpcs:        [],
+  subnets:     [],
+  vpcEndpoint: '',
+  ecsEndpoint: '',
 
   init() {
     /*!!!!!!!!!!!DO NOT CHANGE START!!!!!!!!!!!*/
@@ -322,8 +349,8 @@ export default Ember.Component.extend(ClusterDriver, {
         nodeCount:               2,
         clusterLabels:           ['origin=rancher-otc'],
         // cluster networking
-        vpc:                     '',
-        subnet:                  '',
+        vpcID:                   '',
+        subnetID:                '',
         containerNetworkMode:    defaultNetworkMode,
         containerNetworkCIDR:    defaultCIDR,
         // master eip
@@ -471,6 +498,16 @@ export default Ember.Component.extend(ClusterDriver, {
     set(this, 'newOrExistingEIP', val)
   },
 
+  commonHeaders() {
+    const token = get(this, 'token')
+    console.log('Stored token: ' + token)
+    return {
+      'Content-Type': 'application/json',
+      'Accept':       'application/json',
+      'X-Auth-Token': token,
+    }
+  },
+
   authToken() {
     const data = {
       "auth": {
@@ -498,17 +535,78 @@ export default Ember.Component.extend(ClusterDriver, {
     console.log('Authorizing client: ' + JSON.stringify(data))
     return get(this, 'globalStore').rawRequest({
       headers: { 'Content-Type': 'application/json' },
-      url:     `/meta/proxy/https:/${authURL}`,
+      url:     viaProxy(authURL),
       method:  'POST',
       data:    data,
     }).then((resp) => {
       const token = resp.body.token
-      set(this, 'token', token);
-      return resp.body.token
-    }).catch((resp) => {
-      set(this, 'errors', [JSON.stringify(resp.body.error)])
+      console.log('Received token', JSON.stringify(token))
+      // fill endpoints
+      token.catalog.forEach((srv) => {
+        const region = get(this, 'config.region')
+        switch (srv.name) {
+          case 'ecs':
+            console.log('ecs: ', JSON.stringify(srv))
+            set(this, 'ecsEndpoint', withRegion(srv, region))
+            break
+          case 'vpc':
+            console.log('vpc: ', JSON.stringify(srv))
+            set(this, 'vpcEndpoint', withRegion(srv, region))
+            break
+        }
+      })
+      const b64Token = resp.headers.map['x-subject-token']
+      set(this, 'token', b64Token)
+      return token
+    }).catch((e) => {
+      set(this, 'errors', [JSON.stringify(e)])
       return reject()
     })
+  },
+
+  vpcChoices: [],
+
+  updateVPCs() {
+    const endpoint = viaProxy(get(this, 'vpcEndpoint'))
+    console.log('vpc endpoint: ' + endpoint)
+    return get(this, 'globalStore').rawRequest({
+      headers: this.commonHeaders(),
+      url:     endpoint + '/vpcs',
+      method:  'GET',
+    }).then((resp) => {
+      const vpcs = resp.body.vpcs
+      set(this, 'vpcs', vpcs)
+      console.log('vpcs: ', get(this, 'vpcs'))
+      return vpcs
+    }).catch(() => {
+      return reject()
+    })
+  },
+
+
+  subnetChoices: computed('config.vpcID', function () {
+    const vpcID = get(this, 'config.vpcID')
+    if (vpcID === '') {
+      return []
+    }
+    const endpoint = viaProxy(get(this, 'vpcEndpoint'))
+    return get(this, 'globalStore').rawRequest({
+      params:  { vpc_id: vpcID },
+      headers: this.commonHeaders(),
+      url:     `${endpoint}/subnets`,
+      method:  'GET',
+    }).then((resp) => {
+      let subnets = resp.body.subnets
+      console.log('Subnets: ', subnets)
+      subnets = subnets.map((sn) => ({ label: `${sn.name}(${sn.id})`, value: sn.id }))
+      return subnets
+    }).catch(() => {
+      return []
+    })
+  }),
+
+  updateNodeFlavors() {
+
   },
 
   loadLanguage(lang) {
@@ -523,10 +621,9 @@ export default Ember.Component.extend(ClusterDriver, {
       set(this, 'refresh', true);
       set(this, 'lanChanged', +new Date());
     });
-  }
-  ,
+  },
 
-  async toClusterConfig(cb) {
+  toClusterConfig(cb) {
     setProperties(this, {
         'errors':             [],
         'config.username':    get(this, 'config.username').trim(),
@@ -534,16 +631,15 @@ export default Ember.Component.extend(ClusterDriver, {
         'config.projectName': get(this, 'config.projectName').trim(),
       }
     );
-    return all([this.authToken()]).then(() => {
+    return this.authToken().then(() => {
       console.log('Move to cluster configuration');
       set(this, 'step', Steps.cluster);
       cb(true)
-    }).catch(() => {
-      console.log('Failed to authorize')
+    }).catch((e) => {
+      console.log('Failed to authorize\n' + e)
       cb(false)
     })
-  }
-  ,
+  },
   toNetworkConfig(cb) {
     setProperties(this, {
         'errors':               null,
@@ -551,10 +647,15 @@ export default Ember.Component.extend(ClusterDriver, {
       }
     );
     set(this, 'step', Steps.network)
-    console.log('Move to network configuration')
-    cb(true)
-  }
-  ,
+    this.updateVPCs().then((vpcList) => {
+      const vpcs = vpcList.map((vpc) => ({ label: `${vpc.name}(${vpc.id})`, value: vpc.id }))
+      set(this, 'vpcChoices', vpcs)
+      cb(true)
+    }).catch((e) => {
+      console.log('Failed to get VPCs: ' + e)
+      cb(false)
+    })
+  },
 
 })
 ;
