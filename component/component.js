@@ -59,10 +59,11 @@ const clusterFlavorDetails = `Cluster flavor, which cannot be changed after the 
     cce.t2.large: large-scale, high availability BMS cluster (≤ 500 nodes)
 `
 const instanceFlavorReference = 'https://docs.otc.t-systems.com/en-us/usermanual/ecs/en-us_topic_0177512565.html'
+const typeVM = 'VirtualMachine'
 const clusterTypes = [ // only VM is implemented for now
   {
     label: 'Virtual Machine',
-    value: 'VirtualMachine'
+    value: typeVM
   },
   {
     label: 'Bare Metal',
@@ -343,7 +344,7 @@ export default Ember.Component.extend(ClusterDriver, {
         clusterName:             '',
         displayName:             '',
         clusterVersion:          '',
-        clusterType:             'VirtualMachine',
+        clusterType:             typeVM,
         clusterFlavor:           defaultClusterFlavor,
         nodeCount:               2,
         clusterLabels:           ['origin=rancher-otc'],
@@ -393,7 +394,13 @@ export default Ember.Component.extend(ClusterDriver, {
         case Steps.cluster:
           return this.toNetworkConfig(cb)
         case Steps.network:
+          return this.toClusterEIP(cb)
+        case Steps.clusterEIP:
           return this.toNodeConfig(cb)
+        case Steps.node:
+          return this.toDiskConfig(cb)
+        case Steps.disk:
+          return this.toLBFloatingIP(cb)
         default:
           console.log('Saving driver with config: \n' + JSON.stringify(get(this, 'cluster')))
           this.send('driverSave', cb);
@@ -429,7 +436,6 @@ export default Ember.Component.extend(ClusterDriver, {
   // Any computed properties or custom logic can go here
   azChoices:             a2f(availabilityZones),
   clusterVersionChoices: m2f(k8sVersions),
-  clusterFlavorChoices:  a2f(clusterFlavors),
   clusterTypeChoices:    clusterTypes,
   diskTypeChoices:       a2f(diskTypes),
   networkModeChoices:    m2f(networkModes),
@@ -438,9 +444,12 @@ export default Ember.Component.extend(ClusterDriver, {
     const step = get(this, 'step')
     switch (step) {
       case Steps.auth:
-        return this.authFieldsMissing
+        return !(get(this, 'config.password') &&
+          get(this, 'config.username') &&
+          get(this, 'config.projectName') &&
+          get(this, 'config.domainName'))
       case Steps.cluster:
-        return 'cluster.cluster.next'
+        return !(get(this, 'config.clusterFlavor'))
       case Steps.network:
         return 'cluster.network.next'
       case Steps.node:
@@ -449,11 +458,6 @@ export default Ember.Component.extend(ClusterDriver, {
         return 'cluster.disk.next'
     }
   }),
-
-  authFieldsMissing: computed('config.password', 'config.username', 'config.projectName', 'config.domainName', function () {
-    return !(get(this, 'config.password') && get(this, 'config.username') && get(this, 'config.projectName') && get(this, 'config.domainName'));
-  }),
-
 
   createLabel:       computed('step', function () {
     const step = get(this, 'step')
@@ -645,6 +649,35 @@ export default Ember.Component.extend(ClusterDriver, {
     })
   }),
 
+  clusterFlavorChoices: computed('config.clusterType', function () {
+    const typ = get(this, 'config.clusterType')
+    console.log('Cluster type is ', typ)
+    const prefix = typ === typeVM ? 'cce.s' : 'cce.t'
+    const validFlavors = clusterFlavors.filter((v) => v.startsWith(prefix))
+    console.log('Available cluster flavors: ', JSON.stringify(validFlavors))
+    return a2f(validFlavors)
+  }),
+
+  maxNodes: computed('config.clusterFlavor', function () {
+    const config = get(this, 'config.clusterFlavor')
+    const [_, __, size] = config.split('.')
+    switch (size) {
+      case 'small':
+        return 50
+      case 'medium':
+        return 200
+      case 'large':
+        return 1000
+    }
+  }),
+
+  limitNodes: observer('maxNodes', function () {
+    const max = get(this, 'maxNodes')
+    if (get(this, 'config.nodeCount') > max) {
+      set(this, 'config.nodeCount', max)
+    }
+  }),
+
   loadLanguage(lang) {
     const translation = languages[lang];
     const intl = get(this, 'intl');
@@ -677,19 +710,30 @@ export default Ember.Component.extend(ClusterDriver, {
     })
   },
   toNetworkConfig(cb) {
-    setProperties(this, {
-        'errors':               [],
-        'config.clusterFlavor': get(this, 'config.clusterFlavor').trim(),
-      }
-    );
+    set(this, 'errors', [])
     set(this, 'step', Steps.network)
+    cb(true)
+  },
+  toClusterEIP(cb) {
+    set(this, 'errors', [])
+    set(this, 'step', Steps.clusterEIP)
     cb(true)
   },
   toNodeConfig(cb) {
     set(this, 'errors', [])
     set(this, 'step', Steps.node)
     cb(true)
-  }
+  },
+  toDiskConfig(cb) {
+    set(this, 'errors', [])
+    set(this, 'step', Steps.disk)
+    cb(true)
+  },
+  toLBFloatingIP(cb) {
+    set(this, 'errors', [])
+    set(this, 'step', Steps.lbEIP)
+    cb(true)
+  },
 
 })
 ;
