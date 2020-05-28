@@ -215,6 +215,8 @@ const languages = {
         'Floating IP configuration for master node',
         'Next: Node Configuration'
       ),
+      newMasterEIP:            field('Create New Floating IP'),
+      oldMasterEIP:            field('Use Existing Floating IP'),
       clusterFloatingIP:       field(
         'Existing floating IP',
         '0.0.0.0',
@@ -241,7 +243,7 @@ const languages = {
       disk:                    chapter(
         'Disks Configuration',
         'Configure the disks attached to node instances',
-        'Finish',
+        'Next: Setup Load Balancer',
       ),
       rootVolumeSize:          field(
         'Root Disk Size, GB',
@@ -262,8 +264,8 @@ const languages = {
         'Finish & Create Cluster'
       ),
       createLoadBalancer:      field('Use load balancer for node access'),
-      newEIP:                  field('Create New Floating IP'),
-      oldEIP:                  field('Use Existing Floating IP'),
+      newLBEIP:                field('Create New Floating IP'),
+      oldLBEIP:                field('Use Existing Floating IP'),
       lbFloatingIP:            field(
         'Existing Floating IP',
         '0.0.0.0',
@@ -271,6 +273,7 @@ const languages = {
       lbBandwidth:             field(
         'Bandwidth Size (MBit/s)',
       ),
+      loadingNext: 'Loading Next...',
     }
   }
 };
@@ -388,6 +391,7 @@ export default Ember.Component.extend(ClusterDriver, {
   actions: {
     save(cb) {
       const step = get(this, 'step')
+      console.log('Switched to step', step)
       switch (step) {
         case Steps.auth:
           return this.toClusterConfig(cb)
@@ -450,16 +454,12 @@ export default Ember.Component.extend(ClusterDriver, {
           get(this, 'config.domainName'))
       case Steps.cluster:
         return !(get(this, 'config.clusterFlavor'))
-      case Steps.network:
-        return 'cluster.network.next'
-      case Steps.node:
-        return 'cluster.node.next'
-      case Steps.disk:
-        return 'cluster.disk.next'
+      default:
+        return false
     }
   }),
 
-  createLabel:       computed('step', function () {
+  createLabel:  computed('step', function () {
     const step = get(this, 'step')
     switch (step) {
       case Steps.auth:
@@ -468,20 +468,25 @@ export default Ember.Component.extend(ClusterDriver, {
         return 'cluster.cluster.next'
       case Steps.network:
         return 'cluster.network.next'
+      case Steps.clusterEIP:
+        return 'cluster.masterFloatingIP.next'
       case Steps.node:
         return 'cluster.node.next'
       case Steps.disk:
         return 'cluster.disk.next'
+      case Steps.lbEIP:
+        return 'cluster.loadbalancer.next'
       default:
-        return 'UNKNOWN STEP'
+        return 'Finish'
     }
   }),
-  needLB:            computed('config.createLoadBalancer', function () {
+  needLB:       computed('config.createLoadBalancer', function () {
     return get(this, 'config.createLoadBalancer')
   }),
-  newEIP:            true,
-  needNewClusterEIP: computed('needLB', 'newEIP', function () {
-    return get(this, 'needLB') && get(this, 'newEIP')
+  newLBEIP:     true,
+  newMasterIP:  true,
+  needNewLBEIP: computed('needLB', 'newLBEIP', function () {
+    return get(this, 'needLB') && get(this, 'newLBEIP')
   }),
 
   clusterNameChanged: observer('cluster.name', function () {

@@ -150,7 +150,61 @@
       {{/accordion-list-item}}
     {{/if}}
 
-    {{#if (gte step 4)}}{{/if}}
+    {{#if (gte step 4)}}
+      {{#accordion-list-item title=(t 'cluster.masterFloatingIP.title')
+                             detail=(t 'cluster.masterFloatingIP.detail')
+                             expandOnInit=true
+                             expandAll=al.expandAll
+                             expand=(action expandFn)
+      }}
+        <div class="row">
+          <label>{{t 'cluster.newMasterEIP.label'}}</label>
+          {{radio-button
+                  name="m-new-or-ex"
+                  selection=newMasterIP
+                  value=true
+          }}
+        </div>
+        <div class="row">
+          <label>{{t 'cluster.oldMasterEIP.label'}}</label>
+          {{radio-button
+                  name="m-new-or-ex"
+                  value=false
+                  selection=newMasterIP
+          }}
+        </div>
+        <div class="row">
+          {{#if newMasterIP}}
+            <div class="col span-6 mb-0">
+              <label>{{t 'cluster.clusterEIPBandwidthSize.label'}}</label>
+              {{#input-or-display
+                      editable=(eq mode "new")
+                      value=config.clusterEIPBandwidthSize}}
+                {{input type="number"
+                        name="master-bandwidth"
+                        min=10
+                        max=1000
+                        value=config.clusterEIPBandwidthSize
+                }}
+              {{/input-or-display}}
+            </div>
+          {{else}}
+            <div class="col span-6 mb-0">
+              <label>{{t 'cluster.clusterFloatingIP.label'}}</label>
+              {{#input-or-display
+                      editable=(eq mode "new")
+                      value=config.clusterFloatingIP}}
+                {{input type="text"
+                        placeholder=(t 'cluster.clusterFloatingIP.placeholder')
+                        name="master-existing-ip"
+                        value=config.clusterFloatingIP
+                }}
+              {{/input-or-display}}
+            </div>
+          {{/if}}
+        </div>
+      {{/accordion-list-item }}
+    {{/if}}
 
     {{#if (gte step 5)}}
       {{#accordion-list-item title=(t 'cluster.node.title')
@@ -270,26 +324,21 @@
         {{#if needLB}}
           <br/>
           <div class="row">
-            <label>{{t 'cluster.newEIP.label'}}</label>
-            {{#radio-button
-                    name="new-or-ex"
-                    selection=newEIP
+            <label>{{t 'cluster.newLBEIP.label'}}</label>
+            {{radio-button
+                    selection=newLBEIP
                     value=true
             }}
-            {{/radio-button}}
           </div>
           <div class="row">
-            <label>{{t 'cluster.oldEIP.label'}}</label>
-            {{#radio-button
-                    name="new-or-ex"
+            <label>{{t 'cluster.oldLBEIP.label'}}</label>
+            {{radio-button
                     value=false
-                    selection=newEIP
+                    selection=newLBEIP
             }}
-            {{/radio-button}}
           </div>
           <div class="row">
-
-            {{#if needNewClusterEIP}}
+            {{#if needNewLBEIP}}
               <div class="col span-6 mb-0">
                 <label>{{t 'cluster.lbBandwidth.label'}}</label>
                 {{#input-or-display
@@ -327,6 +376,7 @@
                 save='save'
                 cancel='cancel'
                 createLabel=createLabel
+                savingLabel='cluster.loadingNext'
   }}
 
   {{top-errors errors=errors}}
