@@ -118,9 +118,19 @@ gulp.task('alias', gulp.series('rexport', function () {
     .pipe(gulp.dest(TMP));
 }));
 
-gulp.task('compile', gulp.series('alias', function () {
+gulp.task('client', gulp.series('alias', function () {
+  return gulp.src([
+    `${BASE}client.js`
+  ])
+    .pipe(replace(NAME_TOKEN, DRIVER_NAME))
+    .pipe(gulpConcat(`client.js`, { newLine: '\n' }))
+    .pipe(gulp.dest(TMP));
+}))
+
+gulp.task('compile', gulp.series('client', function () {
   return gulp.src([
     `${TMP}component.js`,
+    `${TMP}client.js`,
     `${TMP}rexport.js`,
     `${TMP}alias.js`,
   ])

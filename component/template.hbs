@@ -86,93 +86,6 @@
             {{/input-or-display}}
           </div>
         </div>
-      {{/accordion-list-item}}
-    {{/if}}
-
-    {{#if (gte step 30)}}
-      {{#accordion-list-item title=(t 'cluster.network.title')
-                             detail=(t 'cluster.network.detail')
-                             expandOnInit=true
-                             expandAll=al.expandAll
-                             expand=(action expandFn)
-      }}
-        <div class="row">
-          <div class="col span-6 mb-0">
-            <label>Create New VPC</label>
-            {{radio-button
-                    name="v-new-or-ex"
-                    selection=newVPC.create
-                    value=true
-            }}
-          </div>
-          <div class="col span-6 mb-0">
-            <label>Use Existing VPC</label>
-            {{radio-button
-                    name="v-new-or-ex"
-                    selection=newVPC.create
-                    value=false
-            }}
-          </div>
-        </div>
-
-        {{#if (eq newVPC.create true)}}
-          <div class="row">
-            <div class="col span-6 mb-0">
-              <label>VPC Name{{field-required}}</label>
-              {{#input-or-display editable=(eq mode "new")  value=newVPC.name }}
-                {{input type="text"
-                        name="new-vpc-name"
-                        class="form-control"
-                        value=newVPC.name
-                }}
-
-              {{/input-or-display}}
-            </div>
-            <div class="col span-6 mb-0">
-              <label>VPC CIDR{{field-required}}</label>
-              {{#input-or-display editable=(eq mode "new")  value=newVPC.cidr }}
-                {{input type="text"
-                        name="new-vpc-cidr"
-                        class="form-control"
-                        value=newVPC.cidr
-                }}
-
-              {{/input-or-display}}
-            </div>
-          </div>
-        {{else}}
-          <div class="row">
-            <div class="col span-6 mb-0">
-              <label>{{t 'cluster.vpcName.label'}}{{field-required}}</label>
-              {{#input-or-display editable=(eq mode "new")  value=config.vpcId}}
-                {{searchable-select
-                        name="vpc-id"
-                        class="form-control"
-                        classNames="form-control"
-                        selected=""
-                        content=vpcChoices
-                        value=config.vpcId
-                }}
-
-              {{/input-or-display}}
-            </div>
-
-            <div class="col span-6 mb-0">
-              <label>{{t 'cluster.subnetName.label'}}{{field-required}}</label>
-              {{#input-or-display editable=(eq mode "new")  value=config.subnetId}}
-                {{searchable-select
-                        name="subnet-id"
-                        class="form-control"
-                        classNames="form-control"
-                        selected=""
-                        content=subnetChoices
-                        value=config.subnetId
-                }}
-              {{/input-or-display}}
-            </div>
-          </div>
-        {{/if}}
-
 
         <div class="row">
           <div class="col span-6 mb-0">
@@ -195,6 +108,149 @@
                       value=config.containerNetworkCidr}}
             {{/input-or-display}}
           </div>
+        </div>
+      {{/accordion-list-item}}
+    {{/if}}
+
+    {{#if (gte step 30)}}
+      {{#accordion-list-item title=(t 'cluster.network.title')
+                             detail=(t 'cluster.network.detail')
+                             expandOnInit=true
+                             expandAll=al.expandAll
+                             expand=(action expandFn)
+      }}
+        <div class="row">
+          <div class="col span-6 mb-0">
+
+            <label>Create New VPC</label>
+            {{radio-button
+                    name="v-new-or-ex"
+                    selection=newVPC.create
+                    disabled=networkCreationDisabled
+                    value=true
+            }}
+          </div>
+          <div class="col span-6 mb-0">
+            <label>Use Existing VPC</label>
+            {{radio-button
+                    name="v-new-or-ex"
+                    selection=newVPC.create
+                    disabled=networkCreationDisabled
+                    value=false
+            }}
+          </div>
+        </div>
+        <div class="row">
+          {{#if (eq newVPC.create true)}}
+
+            <div class="col span-6 mb-0">
+              <label>VPC Name{{field-required}}</label>
+              {{#input-or-display editable=(eq mode "new")  value=newVPC.name }}
+                {{input type="text"
+                        name="new-vpc-name"
+                        class="form-control"
+                        value=newVPC.name
+                }}
+
+              {{/input-or-display}}
+            </div>
+            <div class="col span-6 mb-0">
+              <label>VPC CIDR{{field-required}}</label>
+              {{#input-or-display editable=(eq mode "new")  value=newVPC.cidr }}
+                {{input type="text"
+                        name="new-vpc-cidr"
+                        class="form-control"
+                        value=newVPC.cidr
+                }}
+
+              {{/input-or-display}}
+            </div>
+          {{else}}
+            <div class="col span-6 mb-0">
+              <label>{{t 'cluster.vpcName.label'}}{{field-required}}</label>
+              {{#input-or-display editable=(eq mode "new")  value=config.vpcId}}
+                {{searchable-select
+                        name="vpc-id"
+                        class="form-control"
+                        classNames="form-control"
+                        selected=""
+                        content=vpcChoices
+                        value=config.vpcId
+                }}
+
+              {{/input-or-display}}
+            </div>
+          {{/if}}
+        </div>
+
+        <div class="row">
+          <div class="col span-6 mb-0">
+            <label>Create New Subnet</label>
+            {{radio-button
+                    name="s-new-or-ex"
+                    selection=newSubnet.create
+                    value=true
+            }}
+          </div>
+          <div class="col span-6 mb-0">
+            <label>Use Existing Subnet</label>
+            {{radio-button
+                    name="s-new-or-ex"
+                    selection=newSubnet.create
+                    value=false
+            }}
+          </div>
+        </div>
+        <div class="row">
+          {{#if (eq newSubnet.create true)}}
+            <div class="col span-6 mb-0">
+              <label>Subnet Name{{field-required}}</label>
+              {{#input-or-display editable=(eq mode "new")  value=newSubnet.name }}
+                {{input type="text"
+                        name="new-sn-name"
+                        class="form-control"
+                        value=newSubnet.name
+                }}
+
+              {{/input-or-display}}
+            </div>
+            <div class="col span-6 mb-0">
+              <label>Subnet CIDR{{field-required}}</label>
+              {{#input-or-display editable=(eq mode "new")  value=newSubnet.cidr }}
+                {{input type="text"
+                        name="new-sn-cidr"
+                        class="form-control"
+                        value=newSubnet.cidr
+                }}
+
+              {{/input-or-display}}
+            </div>
+            <div class="col span-6 mb-0">
+              <label>Subnet gateway IP{{field-required}}</label>
+              {{#input-or-display editable=(eq mode "new")  value=newSubnet.gatewayIP }}
+                {{input type="text"
+                        name="new-sn-gw"
+                        class="form-control"
+                        value=newSubnet.gatewayIP
+                }}
+
+              {{/input-or-display}}
+            </div>
+          {{else}}
+            <div class="col span-6 mb-0">
+              <label>{{t 'cluster.subnetName.label'}}{{field-required}}</label>
+              {{#input-or-display editable=(eq mode "new")  value=config.subnetId}}
+                {{searchable-select
+                        name="subnet-id"
+                        class="form-control"
+                        classNames="form-control"
+                        selected=""
+                        content=subnetChoices
+                        value=config.subnetId
+                }}
+              {{/input-or-display}}
+            </div>
+          {{/if}}
         </div>
       {{/accordion-list-item}}
     {{/if}}
@@ -424,6 +480,7 @@
   {{save-cancel editing=(eq mode 'edit')
                 save='save'
                 cancel='cancel'
+                saveDisabled=fieldsMissing
                 createLabel=createLabel
                 savingLabel='cluster.loadingNext'
   }}

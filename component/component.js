@@ -85,12 +85,11 @@ const k8sVersions = {
 const defaultBandwidth = 100
 const defaultFloatingIPType = '5_bgp'
 const defaultShareType = 'PER'
-const defaultCIDR = "192.168.0.0/16"
+const defaultClusterCIDR = "172.16.0.0/16"
 const authModes = {
   RBAC: 'rbac',
   x509: 'x509',
 }
-const defaultDNS = ['100.125.4.25', '8.8.8.8']
 const networkModes = {
   'Overlay L2':      'overlay_l2',
   'Underlay IPVLAN': 'underlay_ipvlan',
@@ -131,27 +130,6 @@ function chapter(title, detail = '', next) {
     next:   next,
     detail: detail,
   }
-}
-
-/**
- * Convert external URL to rancher meta proxy's URL
- * @param {string} url
- * @returns {string}
- */
-function viaProxy(url) {
-  url = url.replace('://', ':/')
-  return `/meta/proxy/${url}`
-}
-
-
-/**
- * Select endpoint for current region for service
- * @param service - object representing endpoint in token
- * @param {string} region
- */
-function withRegion(service, region) {
-  const endpoint = service.endpoints.find(ep => ep.region === region)
-  return endpoint.url
 }
 
 const languages = {
@@ -275,6 +253,8 @@ const languages = {
         'Bandwidth Size (MBit/s)',
       ),
       loadingNext:             'Loading Next...',
+      newVPC:                  'Create New VPC',
+      newSubnet:               'Create New Subnet',
     }
   }
 };
@@ -283,8 +263,6 @@ const Steps = Object.freeze({
   auth:       10,
   cluster:    20,
   network:    30,
-  newVPC:     32,
-  newSubnet:  34,
   clusterEip: 40,
   node:       50,
   disk:       60,
@@ -337,7 +315,7 @@ export default Ember.Component.extend(ClusterDriver, {
 
     console.log('Config is ' + JSON.stringify(config))
 
-    if (!config) {
+    if (!config || JSON.stringify(config) === "{}") {  // observers initializes context
       config = get(this, 'globalStore').createRecord({
         type:                    configField,
         // authentication
@@ -363,7 +341,7 @@ export default Ember.Component.extend(ClusterDriver, {
         vpcId:                   '',
         subnetId:                '',
         containerNetworkMode:    defaultNetworkMode,
-        containerNetworkCidr:    defaultCIDR,
+        containerNetworkCidr:    defaultClusterCIDR,
         // master eip
         clusterFloatingIp:       '',
         clusterEipBandwidthSize: defaultBandwidth,
@@ -395,87 +373,40 @@ export default Ember.Component.extend(ClusterDriver, {
     }
   },
 
-  waitForVPCUp(vpcID, endTime = null) {
-    if (endTime === null) {
-      endTime = new Date().getTime() + 10 * 1000
-    }
-    const endpoint = viaProxy(get(this, 'vpcEndpoint'))
-    if (new Date().getTime() > endTime) {
-      return reject()
-    }
-    get(this, 'globalStore').rawRequest({
-      headers: this.commonHeaders(),
-      url:     endpoint + '/vpcs/' + vpcID,
-      method:  'GET',
-    }).then((resp) => {
-      if (resp.body.vpc.status === 'OK') {
-        set(this, 'config.vpcId', vpcID)
-        this.updateVPCChoices()
-        set(this, 'newVPC.create', false)
-        return true
-      }
-      return setTimeout(() => this.waitForVPCUp(vpcID, endTime), 1000)
-    }).catch(() => {
-      return reject()
-    })
-  },
-
-  waitForSubnetUp(subnetID, endTime = null) {
-    if (endTime === null) {
-      endTime = new Date().getTime() + 10 * 1000
-    }
-    const endpoint = viaProxy(get(this, 'vpcEndpoint'))
-    if (new Date().getTime() > endTime) {
-      return reject()
-    }
-    get(this, 'globalStore').rawRequest({
-      headers: this.commonHeaders(),
-      url:     endpoint + '/subnets/' + subnetID,
-      method:  'GET',
-    }).then((resp) => {
-      if (resp.body.status === 'ACTIVE') {
-        set(this, 'config.subnetId', subnetID)
-        return true
-      }
-      return this.waitForSubnetUp(subnetID, endTime)
-    }).catch(() => {
-      return reject()
-    })
-  },
-
-
   createVPC(cb) {
-    const endpoint = viaProxy(get(this, 'vpcEndpoint'))
-    return get(this, 'globalStore').rawRequest({
-      headers: this.commonHeaders(),
-      url:     endpoint + '/vpcs',
-      method:  'POST',
-      data:    { vpc: { name: get(this, 'newVPC.name'), cidr: get(this, 'newVPC.cidr') } },
-    }).then((resp) => {
-      const vpc = resp.body.vpc
-      this.waitForVPCUp(vpc.id)
+    return get(this, 'otc').createVPC(
+      get(this, 'newVPC.name'),
+      get(this, 'newVPC.cidr'),
+    ).then((vpcID) => {
+      set(this, 'config.vpcId', vpcID)
+      set(this, 'newVPC.create', false)
+      set(this, 'newVPC.name', '')
+      set(this, 'errors', [])
+      this.updateVPCs()
+      cb(true)
     }).catch((er) => {
-      set(this, 'errors', [JSON.stringify(er.body)])
+      set(this, 'newVPC.name', '')
+      set(this, 'errors', [JSON.stringify(er)])
+      cb(false)
     })
   },
   createSubnet(cb) {
-    const endpoint = viaProxy(get(this, 'vpcEndpoint'))
-    return get(this, 'globalStore').rawRequest({
-      headers: this.commonHeaders(),
-      url:     endpoint + '/subnets',
-      method:  'POST',
-      data:    {
-        name:       get(this, 'newSubnet.name'),
-        cidr:       get(this, 'newSubnet.cidr'),
-        gateway_ip: get(this, 'newSubnet.gatewayIP'),
-        vpc_id:     get(this, 'config.vpcId'),
-        dnsList:    defaultDNS,
-      },
-    }).then((resp) => {
-      const subnet = resp.body.subnet
-      this.waitForSubnetUp(subnet.id)
+    return get(this, 'otc').createSubnet(
+      get(this, 'config.vpcId'),
+      get(this, 'newSubnet.name'),
+      get(this, 'newSubnet.cidr'),
+      get(this, 'newSubnet.gatewayIP'),
+    ).then((subnetID) => {
+      set(this, 'config.subnetId', subnetID)
+      set(this, 'newSubnet.name', '')
+      set(this, 'newSubnet.create', false)
+      set(this, 'errors', [])
+      this.updateSubnets()
+      cb(true)
     }).catch((er) => {
-      set(this, 'errors', [er])
+      set(this, 'newSubnet.name', '')
+      set(this, 'errors', [JSON.stringify(er)])
+      cb(false)
     })
   },
 
@@ -489,9 +420,14 @@ export default Ember.Component.extend(ClusterDriver, {
           return this.toNetworkConfig(cb)
         case Steps.network:
           const newVPC = get(this, 'newVPC.create')
+          const newSubnet = get(this, 'newSubnet.create')
           console.log('Need new VPC? ' + newVPC)
+          console.log('Need new subnet? ' + newSubnet)
           if (newVPC) {
             return this.createVPC(cb)
+          }
+          if (newSubnet) {
+            return this.createSubnet(cb)
           }
           return this.toClusterEip(cb)
         case Steps.clusterEip:
@@ -539,22 +475,61 @@ export default Ember.Component.extend(ClusterDriver, {
   diskTypeChoices:       a2f(diskTypes),
   networkModeChoices:    m2f(networkModes),
 
-  fieldsMissing: computed('step', function () {
+  otc: computed('config.region', function () {
+    return otcClient(get(this, 'config.region'))
+  }),
+
+  authFieldsMissing:  true,
+  onAuthFieldsChange: observer('config.username', 'config.password', 'config.domainName', 'config.projectName', function () {
+    const missing = !(
+      get(this, 'config.username') &&
+      get(this, 'config.password') &&
+      get(this, 'config.domainName') &&
+      get(this, 'config.projectName')
+    )
+    set(this, 'authFieldsMissing', missing)
+  }),
+
+  newVPCFieldsMissing:    false,
+  onNewVPCInput:          observer('newVPC.create', 'newVPC.name', 'newVPC.cidr', function () {
+    const missing = get(this, 'newVPC.create') &&
+      !(get(this, 'newVPC.name') && get(this, 'newVPC.cidr'))
+    set(this, 'newVPCFieldsMissing', missing)
+  }),
+  newSubnetFieldsMissing: false,
+  onNewSubnetInput:       observer('newSubnet.create', 'newSubnet.name', 'newSubnet.cidr', function () {
+    const missing = get(this, 'newSubnet.create') &&
+      !(get(this, 'newSubnet.name') && get(this, 'newSubnet.cidr') && get(this, 'newSubnet.gatewayIP'))
+    console.log('Missing Subnet fields?', missing)
+    set(this, 'newSubnetFieldsMissing', missing)
+  }),
+  networkFieldsMissing:   true,
+  onNetworkFieldsChange:  observer('config.vpcId', 'config.subnetId', 'newVPC.create', 'newSubnet.create', 'newVPCFieldsMissing', 'newSubnetFieldsMissing', function () {
+    if (get(this, 'newVPC.create')) {
+      set(this, 'networkFieldsMissing', get(this, 'newVPCFieldsMissing'))
+      return
+    }
+    if (get(this, 'newSubnet.create')) {
+      set(this, 'networkFieldsMissing', get(this, 'newSubnetFieldsMissing'))
+      return
+    }
+    set(this, 'networkFieldsMissing', !(get(this, 'config.vpcId') && get(this, 'config.subnetId')))
+
+  }),
+
+  fieldsMissing: computed('step', 'authFieldsMissing', 'networkFieldsMissing', function () {
     const step = get(this, 'step')
     switch (step) {
       case Steps.auth:
-        return !(get(this, 'config.password') &&
-          get(this, 'config.username') &&
-          get(this, 'config.projectName') &&
-          get(this, 'config.domainName'))
-      case Steps.cluster:
-        return !(get(this, 'config.clusterFlavor'))
+        return get(this, 'authFieldsMissing')
+      case Steps.network:
+        return get(this, 'networkFieldsMissing')
       default:
         return false
     }
   }),
 
-  createLabel:  computed('step', function () {
+  createLabel:  computed('step', 'newVPC.create', 'newSubnet.create', function () {
     const step = get(this, 'step')
     switch (step) {
       case Steps.auth:
@@ -562,6 +537,14 @@ export default Ember.Component.extend(ClusterDriver, {
       case Steps.cluster:
         return 'cluster.cluster.next'
       case Steps.network:
+        const newVPC = get(this, 'newVPC.create')
+        const newSubnet = get(this, 'newSubnet.create')
+        if (newVPC) {
+          return 'cluster.newVPC'
+        }
+        if (newSubnet) {
+          return 'cluster.newSubnet'
+        }
         return 'cluster.network.next'
       case Steps.clusterEip:
         return 'cluster.masterFloatingIp.next'
@@ -592,29 +575,6 @@ export default Ember.Component.extend(ClusterDriver, {
     set(this, 'config.displayName', name)
   }),
 
-  //withNewVPC: observer('newVPC', function () {
-  //  const vpc = get(this, 'newVPC')
-  //  const needVPC = vpc.create
-  //  console.log('new VPC create value changed to ' + needVPC)
-  //  const curStep = get(this, 'step')
-  //  if (needVPC) {
-  //    set(this, 'newSubnet.create', true)
-  //  }
-  //  if (curStep === Steps.network && needVPC) {
-  //    console.log('Step is now ', Steps.newVPC)
-  //    set(this, 'step', Steps.newVPC)
-  //  }
-  //}),
-  //
-  //withNewSubnet: observer('newSubnet.create', function () {
-  //  const curStep = get(this, 'step')
-  //  const needSubnet = get(this, 'newSubnet.create')
-  //  const vpcID = get(this, 'config.vpcId')
-  //  if ((curStep === Steps.network && needSubnet) || (curStep === Steps.newVPC && vpcID !== '')) {
-  //    set(this, 'step', Steps.newSubnet)
-  //  }
-  //}),
-
   languageChanged: observer('intl.locale', function () {
     const lang = get(this, 'intl.locale');
     if (lang) {
@@ -622,136 +582,62 @@ export default Ember.Component.extend(ClusterDriver, {
     }
   }),
 
-  handleEipFields(val) {
-    set(this, 'newOrExistingEip', val)
-  },
-
-  commonHeaders() {
-    const token = get(this, 'token')
-    return {
-      'Content-Type': 'application/json',
-      'Accept':       'application/json',
-      'X-Auth-Token': token,
-    }
-  },
-
-  authToken() {
-    const data = {
-      "auth": {
-        "identity": {
-          "methods":  [
-            "password"
-          ],
-          "password": {
-            "user": {
-              "name":     get(this, 'config.username'),
-              "password": get(this, 'config.password'),
-              "domain":   {
-                "name": get(this, 'config.domainName'),
-              }
-            }
-          }
-        },
-        "scope":    {
-          "project": {
-            "name": get(this, 'config.projectName'),
-          }
-        }
-      }
-    }
-    console.log('Authorizing client: ' + JSON.stringify(data))
-    return get(this, 'globalStore').rawRequest({
-      headers: { 'Content-Type': 'application/json' },
-      url:     viaProxy(authURL),
-      method:  'POST',
-      data:    data,
-    }).then((resp) => {
-      const token = resp.body.token
-      console.log('Received token', JSON.stringify(token))
-      // fill endpoints
-      token.catalog.forEach((srv) => {
-        const region = get(this, 'config.region')
-        switch (srv.name) {
-          case 'nova':
-            console.log('nova: ', JSON.stringify(srv))
-            set(this, 'novaEndpoint', withRegion(srv, region))
-            break
-          case 'vpc':
-            console.log('vpc: ', JSON.stringify(srv))
-            set(this, 'vpcEndpoint', withRegion(srv, region))
-            break
-        }
-      })
-      const b64Token = resp.headers.map['x-subject-token']
-      set(this, 'token', b64Token)
-      return token
+  authClient() {
+    return get(this, 'otc').authenticate(
+      get(this, 'config.username'),
+      get(this, 'config.password'),
+      get(this, 'config.domainName'),
+      get(this, 'config.projectName'),
+    ).then(() => {
+      return resolve()
     }).catch((e) => {
-      set(this, 'errors', [JSON.stringify(e)])
+      set(this, 'errors', [e])
       return reject()
     })
   },
 
-  vpcChoices:    [],
-  updateVPCChoices: function () {
-    const endpoint = viaProxy(get(this, 'vpcEndpoint'))
-    console.log('vpc endpoint: ' + endpoint)
-    return get(this, 'globalStore').rawRequest({
-      headers: this.commonHeaders(),
-      url:     endpoint + '/vpcs',
-      method:  'GET',
-    }).then((resp) => {
-      const vpcs = resp.body.vpcs
-      console.log('Got VPCs: ', vpcs)
-      const vpcChoices = vpcs.map((vpc) => ({ label: `${vpc.name}(${vpc.id})`, value: vpc.id }))
-      set(this, 'vpcChoices', vpcChoices)
-      return vpcChoices
+  vpcChoices: computed('vpcs', function () {
+    const vpcs = get(this, 'vpcs')
+    return vpcs.map((vpc) => ({ label: `${vpc.name} (${vpc.id})`, value: vpc.id }))
+  }),
+  updateVPCs: function () {
+    return get(this, 'otc').listVPCs().then((vpcs) => {
+      set(this, 'vpcs', vpcs)
+      return resolve()
     }).catch(() => {
       console.error('Failed to get VPCs')
       return reject()
     })
   },
-  tokenSet:         observer('token', function () {
-    const token = get(this, 'token')
-    console.log('Token changed to ', token)
-    if (get(this, 'token')) {
-      this.updateVPCChoices()
-    }
-  }),
 
-  subnetChoices: computed('config.vpcId', function () {
+  subnetChoices: computed('subnets', function () {
+    const subnets = get(this, 'subnets')
+    return subnets.map((sn) => ({ label: `${sn.name}(${sn.id})`, value: sn.id }))
+  }),
+  updateSubnets: function () {
     const vpcId = get(this, 'config.vpcId')
-    if (vpcId === '') {
+    if (!vpcId) {
       return []
     }
-    const endpoint = viaProxy(get(this, 'vpcEndpoint'))
-    return get(this, 'globalStore').rawRequest({
-      headers: this.commonHeaders(),
-      url:     `${endpoint}/subnets?vpc_id=${vpcId}`,
-      method:  'GET',
-    }).then((resp) => {
-      let subnets = resp.body.subnets
+    return get(this, 'otc').listSubnets(vpcId).then((subnets) => {
       console.log('Subnets: ', subnets)
-      subnets = subnets.map((sn) => ({ label: `${sn.name}(${sn.id})`, value: sn.id }))
-      return subnets
-    }).catch(() => {
-      console.error('Failed to get subnets')
+      set(this, 'subnets', subnets)
+      return resolve()
+    }).catch((e) => {
+      console.error('Failed to get subnets: ', e)
       return reject()
     })
+  },
+  vpcUpdated:    observer('config.vpcId', function () {
+    this.updateSubnets()
   }),
 
   nodeFlavorChoices: computed('token', function () {
-    const endpoint = viaProxy(get(this, 'novaEndpoint'))
-    return get(this, 'globalStore').rawRequest({
-      method:  'GET',
-      headers: this.commonHeaders(),
-      url:     `${endpoint}/flavors`
-    }).then((resp) => {
-      let flavors = resp.body.flavors
+    return get(this, 'otc').listNodeFlavors().then((flavors) => {
       console.log('Flavors: ', flavors)
       return flavors.map((f) => ({ label: f.name, value: f.id }))
     }).catch(() => {
       console.log('Failed to load node flavors')
-      return reject()
     })
   }),
 
@@ -759,15 +645,9 @@ export default Ember.Component.extend(ClusterDriver, {
     if (get(this, 'token') === '') {
       return []
     }
-    const endpoint = viaProxy(get(this, 'novaEndpoint'))
-    return get(this, 'globalStore').rawRequest({
-      method:  'GET',
-      headers: this.commonHeaders(),
-      url:     `${endpoint}/os-keypairs`
-    }).then((resp) => {
-      let keypairs = resp.body.keypairs
-      console.log('Received key pairs: ', keypairs)
-      return keypairs.map((k) => {
+    return get(this, 'otc').listKeyPairs().then((keyPairs) => {
+      console.log('Received key pairs: ', keyPairs)
+      return keyPairs.map((k) => {
         let name = k.keypair.name
         if (name.length > 20) {
           name = name.substring(0, 17) + '...'
@@ -812,6 +692,11 @@ export default Ember.Component.extend(ClusterDriver, {
     }
   }),
 
+  networkCreationDisabled: computed('step', function () {
+    const step = get(this, 'step')
+    return step !== Steps.network
+  }),
+
   loadLanguage(lang) {
     const translation = languages[lang];
     const intl = get(this, 'intl');
@@ -834,9 +719,10 @@ export default Ember.Component.extend(ClusterDriver, {
         'config.projectName': get(this, 'config.projectName').trim(),
       }
     );
-    return this.authToken().then(() => {
+    return this.authClient().then(() => {
       console.log('Move to cluster configuration');
       set(this, 'step', Steps.cluster);
+      this.updateVPCs()
       cb(true)
     }).catch((e) => {
       console.log('Failed to authorize\n' + e)
@@ -846,18 +732,6 @@ export default Ember.Component.extend(ClusterDriver, {
   toNetworkConfig(cb) {
     set(this, 'errors', [])
     set(this, 'step', Steps.network)
-    cb(true)
-  },
-  toNewVPC(cb) {
-    set(this, 'errors', [])
-    console.log('Creating new VPC')
-    set(this, 'step', Steps.newVPC)
-    cb(true)
-  },
-  toNewSubnet(cb) {
-    set(this, 'errors', [])
-    console.log('Creating new subnet')
-    set(this, 'step', Steps.newSubnet)
     cb(true)
   },
   toClusterEip(cb) {
@@ -882,4 +756,3 @@ export default Ember.Component.extend(ClusterDriver, {
   },
 
 })
-;
