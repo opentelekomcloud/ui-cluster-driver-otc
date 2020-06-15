@@ -331,10 +331,10 @@ export default Ember.Component.extend(ClusterDriver, {
         secretKey:               '',
         // token auth
         token:                   '',
-        username:                'akachurin',
+        username:                '',
         password:                '',
-        domainName:              'OTC00000000001000000448',
-        projectName:             'eu-de_test_dmd',
+        domainName:              '',
+        projectName:             '',
         region:                  'eu-de',
         // cluster settings
         clusterName:             '',
