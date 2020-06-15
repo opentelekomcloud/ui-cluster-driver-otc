@@ -77,6 +77,11 @@ const availabilityZones = [
   'eu-de-02',
   'eu-de-03',
 ]
+const lbProtocols = [
+  'TCP',
+  'HTTP',
+  'HTTPS',
+]
 const k8sVersions = {
   'latest': '',
   'v1.13':  'v1.13.10-r0',
@@ -238,13 +243,15 @@ const languages = {
       dataVolumeType:          field('Data Disk Type'),
       // LB bandwidth config
       loadbalancer:            chapter(
-        'Loadbalancer Bandwidth',
-        'Configure LB bandwidth',
+        'Loadbalancer configuration',
+        'Configure LB',
         'Finish & Create Cluster'
       ),
       createLoadBalancer:      field('Use load balancer for node access'),
       newLBEip:                field('Create New Floating IP'),
       oldLBEip:                field('Use Existing Floating IP'),
+      lbProtocol:              field('Load Balancer Protocol'),
+      lbPort:                  field('Load Balancer Port'),
       lbFloatingIp:            field(
         'Existing Floating IP',
         '0.0.0.0',
@@ -310,8 +317,8 @@ export default Ember.Component.extend(ClusterDriver, {
     get(this, 'intl.locale');
     this.loadLanguage(lang);
 
-    let config = get(this, 'config');
-    let configField = get(this, 'configField');
+    let config = get(this, 'cluster.otcEngineConfig')
+    let configField = get(this, 'configField')
 
     console.log('Config is ' + JSON.stringify(config))
 
@@ -324,10 +331,10 @@ export default Ember.Component.extend(ClusterDriver, {
         secretKey:               '',
         // token auth
         token:                   '',
-        username:                '',
+        username:                'akachurin',
         password:                '',
-        domainName:              '',
-        projectName:             '',
+        domainName:              'OTC00000000001000000448',
+        projectName:             'eu-de_test_dmd',
         region:                  'eu-de',
         // cluster settings
         clusterName:             '',
@@ -352,7 +359,7 @@ export default Ember.Component.extend(ClusterDriver, {
         authProxyCa:             '',
         // nodes config
         availabilityZone:        '',
-        nodeFlavor:              '',
+        nodeFlavor:              's2.large.2',
         os:                      os,
         keyPair:                 '',
         // node disks
@@ -363,13 +370,19 @@ export default Ember.Component.extend(ClusterDriver, {
         // LB config
         createLoadBalancer:      true,
         lbFloatingIp:            '',
+        appPort:                 8080,
+        appProtocol:             'TCP',
         lbEipBandwidthSize:      defaultBandwidth,
         lbEipType:               defaultFloatingIPType,
         lbEipShareType:          defaultShareType,
       });
-      set(this, 'config', config);
-      set(this, `cluster.${configField}`, config);
-      set(this, 'cluster.driver', get(this, 'driverName'));
+    }
+    set(this, 'config', config);
+    set(this, `cluster.${configField}`, config);
+    set(this, 'cluster.driver', get(this, 'driverName'));
+
+    if (this.editing) {
+      set(this, 'newMasterIP', false)
     }
   },
 
@@ -412,6 +425,11 @@ export default Ember.Component.extend(ClusterDriver, {
 
   actions: {
     save(cb) {
+      if (get(this, 'editing')) {
+        console.log('Saving driver with config: \n' + JSON.stringify(get(this, 'cluster')))
+        this.send('driverSave', cb);
+        return
+      }
       const step = get(this, 'step')
       switch (step) {
         case Steps.auth:
@@ -474,6 +492,7 @@ export default Ember.Component.extend(ClusterDriver, {
   clusterTypeChoices:    clusterTypes,
   diskTypeChoices:       a2f(diskTypes),
   networkModeChoices:    m2f(networkModes),
+  lbProtocolChoices:     a2f(lbProtocols),
 
   otc: computed('config.region', function () {
     return otcClient(get(this, 'config.region'))
@@ -517,13 +536,18 @@ export default Ember.Component.extend(ClusterDriver, {
 
   }),
 
-  fieldsMissing: computed('step', 'authFieldsMissing', 'networkFieldsMissing', function () {
+  fieldsMissing: computed('step', 'authFieldsMissing', 'networkFieldsMissing', 'config.keyPair', function () {
     const step = get(this, 'step')
+    if (get(this, 'editing')) {
+      return false
+    }
     switch (step) {
       case Steps.auth:
         return get(this, 'authFieldsMissing')
       case Steps.network:
         return get(this, 'networkFieldsMissing')
+      case Steps.node:
+        return !get(this, 'config.keyPair')
       default:
         return false
     }
@@ -562,8 +586,11 @@ export default Ember.Component.extend(ClusterDriver, {
     return get(this, 'config.createLoadBalancer')
   }),
   newLBEip:     true,
-  newMasterIP:  true,
+  newMasterIP:  true,  // just for initial value
   needNewLBEip: computed('needLB', 'newLBEip', function () {
+    if (this.editing) {
+      return false
+    }
     return get(this, 'needLB') && get(this, 'newLBEip')
   }),
 
@@ -612,7 +639,7 @@ export default Ember.Component.extend(ClusterDriver, {
 
   subnetChoices: computed('subnets', function () {
     const subnets = get(this, 'subnets')
-    return subnets.map((sn) => ({ label: `${sn.name}(${sn.id})`, value: sn.id }))
+    return subnets.map((sn) => ({ label: `${sn.name}(${sn.cidr})`, value: sn.id }))
   }),
   updateSubnets: function () {
     const vpcId = get(this, 'config.vpcId')

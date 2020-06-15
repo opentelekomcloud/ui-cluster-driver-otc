@@ -1,6 +1,6 @@
 <section class="horizontal-form">
 
-  {{#accordion-list showExpandAll=false as | al expandFn |}}
+  {{#accordion-list showExpandAll=(eq mode "edit") as | al expandFn |}}
     {{#accordion-list-item title=(t 'cluster.auth.title')
                            expand=(action expandFn)
                            expandOnInit=true
@@ -15,7 +15,7 @@
         </div>
         <div class="col span-6 mb-0">
           <label>{{t 'cluster.projectName.label'}}{{field-required}}</label>
-          {{#input-or-display editable=(eq mode "new") value=cconfig.projectName}}
+          {{#input-or-display editable=(eq mode "new") value=config.projectName}}
             {{input type="text" name="project-name" placeholder=(t 'cluster.projectName.placeholder')
                     classNames="form-control" value=config.projectName}}
           {{/input-or-display}}
@@ -37,7 +37,7 @@
       </div>
     {{/accordion-list-item}}
 
-    {{#if (gte step 20)}}
+    {{#if (or (gte step 20) (eq mode "edit"))}}
       {{#accordion-list-item title=(t 'cluster.cluster.title')
                              expandOnInit=true
                              expandAll=al.expandAll
@@ -76,7 +76,7 @@
           </div>
           <div class="col span-6 mb-0">
             <label>{{t 'cluster.nodeCount.label'}}{{field-required}}</label>
-            {{#input-or-display editable=(eq mode "new") value=config.nodeCount}}
+            {{#input-or-display editable=(or (eq mode "new") eq mode "editing") value=config.nodeCount}}
               {{input type="number"
                       min=1
                       max=maxNodes
@@ -112,34 +112,36 @@
       {{/accordion-list-item}}
     {{/if}}
 
-    {{#if (gte step 30)}}
+    {{#if (or (gte step 30) (eq mode "edit"))}}
       {{#accordion-list-item title=(t 'cluster.network.title')
                              detail=(t 'cluster.network.detail')
                              expandOnInit=true
                              expandAll=al.expandAll
                              expand=(action expandFn)
       }}
-        <div class="row">
-          <div class="col span-6 mb-0">
+        {{#if (eq mode "new")}}
+          <div class="row">
+            <div class="col span-6 mb-0">
 
-            <label>Create New VPC</label>
-            {{radio-button
-                    name="v-new-or-ex"
-                    selection=newVPC.create
-                    disabled=networkCreationDisabled
-                    value=true
-            }}
+              <label>Create New VPC</label>
+              {{radio-button
+                      name="v-new-or-ex"
+                      selection=newVPC.create
+                      disabled=networkCreationDisabled
+                      value=true
+              }}
+            </div>
+            <div class="col span-6 mb-0">
+              <label>Use Existing VPC</label>
+              {{radio-button
+                      name="v-new-or-ex"
+                      selection=newVPC.create
+                      disabled=networkCreationDisabled
+                      value=false
+              }}
+            </div>
           </div>
-          <div class="col span-6 mb-0">
-            <label>Use Existing VPC</label>
-            {{radio-button
-                    name="v-new-or-ex"
-                    selection=newVPC.create
-                    disabled=networkCreationDisabled
-                    value=false
-            }}
-          </div>
-        </div>
+        {{/if}}
         <div class="row">
           {{#if (eq newVPC.create true)}}
 
@@ -182,25 +184,26 @@
             </div>
           {{/if}}
         </div>
-
-        <div class="row">
-          <div class="col span-6 mb-0">
-            <label>Create New Subnet</label>
-            {{radio-button
-                    name="s-new-or-ex"
-                    selection=newSubnet.create
-                    value=true
-            }}
+        {{#if (eq mode "new")}}
+          <div class="row">
+            <div class="col span-6 mb-0">
+              <label>Create New Subnet</label>
+              {{radio-button
+                      name="s-new-or-ex"
+                      selection=newSubnet.create
+                      value=true
+              }}
+            </div>
+            <div class="col span-6 mb-0">
+              <label>Use Existing Subnet</label>
+              {{radio-button
+                      name="s-new-or-ex"
+                      selection=newSubnet.create
+                      value=false
+              }}
+            </div>
           </div>
-          <div class="col span-6 mb-0">
-            <label>Use Existing Subnet</label>
-            {{radio-button
-                    name="s-new-or-ex"
-                    selection=newSubnet.create
-                    value=false
-            }}
-          </div>
-        </div>
+        {{/if}}
         <div class="row">
           {{#if (eq newSubnet.create true)}}
             <div class="col span-6 mb-0">
@@ -255,29 +258,31 @@
       {{/accordion-list-item}}
     {{/if}}
 
-    {{#if (gte step 40)}}
+    {{#if (or (gte step 40) (eq mode "edit"))}}
       {{#accordion-list-item title=(t 'cluster.masterFloatingIp.title')
                              detail=(t 'cluster.masterFloatingIp.detail')
                              expandOnInit=true
                              expandAll=al.expandAll
                              expand=(action expandFn)
       }}
-        <div class="row">
-          <label>{{t 'cluster.newMasterEip.label'}}</label>
-          {{radio-button
-                  name="m-new-or-ex"
-                  selection=newMasterIP
-                  value=true
-          }}
-        </div>
-        <div class="row">
-          <label>{{t 'cluster.oldMasterEip.label'}}</label>
-          {{radio-button
-                  name="m-new-or-ex"
-                  value=false
-                  selection=newMasterIP
-          }}
-        </div>
+        {{#if (eq mode "new")}}
+          <div class="row">
+            <label>{{t 'cluster.newMasterEip.label'}}</label>
+            {{radio-button
+                    name="m-new-or-ex"
+                    selection=newMasterIP
+                    value=true
+            }}
+          </div>
+          <div class="row">
+            <label>{{t 'cluster.oldMasterEip.label'}}</label>
+            {{radio-button
+                    name="m-new-or-ex"
+                    value=false
+                    selection=newMasterIP
+            }}
+          </div>
+        {{/if}}
         <div class="row">
           {{#if newMasterIP}}
             <div class="col span-6 mb-0">
@@ -354,7 +359,7 @@
       {{/accordion-list-item}}
     {{/if}}
 
-    {{#if (gte step 60)}}
+    {{#if (or (gte step 60) (eq mode "edit"))}}
       {{#accordion-list-item title=(t 'cluster.disk.title')
                              detail=(t 'cluster.disk.detail')
                              expandOnInit=true
@@ -406,7 +411,7 @@
         </div>
       {{/accordion-list-item}}
     {{/if}}
-    {{#if (gte step 70)}}
+    {{#if (or (gte step 70) (eq mode "edit"))}}
       {{#accordion-list-item title=(t 'cluster.loadbalancer.title')
                              detail=(t 'cluster.loadbalancer.detail')
                              expandOnInit=true
@@ -428,20 +433,26 @@
         </div>
         {{#if needLB}}
           <br/>
-          <div class="row">
-            <label>{{t 'cluster.newLBEip.label'}}</label>
-            {{radio-button
-                    selection=newLBEip
-                    value=true
-            }}
-          </div>
-          <div class="row">
-            <label>{{t 'cluster.oldLBEip.label'}}</label>
-            {{radio-button
-                    value=false
-                    selection=newLBEip
-            }}
-          </div>
+          {{#if (eq mode "new")}}
+            <div class="row">
+              <div class="col span-6 mb-0">
+                <label>{{t 'cluster.newLBEip.label'}}</label>
+                {{radio-button
+                        selection=newLBEip
+                        value=true
+                }}
+              </div>
+            </div>
+            <div class="row">
+              <div class="col span-6 mb-0">
+                <label>{{t 'cluster.oldLBEip.label'}}</label>
+                {{radio-button
+                        value=false
+                        selection=newLBEip
+                }}
+              </div>
+            </div>
+          {{/if}}
           <div class="row">
             {{#if needNewLBEip}}
               <div class="col span-6 mb-0">
@@ -471,6 +482,30 @@
                 {{/input-or-display}}
               </div>
             {{/if}}
+          </div>
+          <div class="row">
+            <div class="col span-6 mb-0">
+              <label>{{t 'cluster.lbPort.label'}}{{field-required}}</label>
+              {{#input-or-display
+                      editable=(eq mode "new")
+                      value=config.appPort}}
+                {{input type="number"
+                        name="lb-port"
+                        value=config.appPort
+                }}
+              {{/input-or-display}}
+            </div>
+            <div class="col span-6 mb-0">
+              <label>{{t 'cluster.lbProtocol.label'}}</label>
+              {{#input-or-display
+                      editable=(eq mode "new")
+                      value=config.appProtocol}}
+                {{new-select class="form-control"
+                             content=lbProtocolChoices
+                             value=config.appProtocol
+                }}
+              {{/input-or-display}}
+            </div>
           </div>
         {{/if}}
       {{/accordion-list-item }}
