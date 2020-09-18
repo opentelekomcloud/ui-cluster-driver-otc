@@ -95,11 +95,20 @@ const authModes = {
   RBAC: 'rbac',
   x509: 'x509',
 }
-const networkModes = {
-  'Overlay L2':      'overlay_l2',
-  'Underlay IPVLAN': 'underlay_ipvlan',
-  'VPC Router':      'vpc-router,',
+const any = '*'
+
+function networkMode(name, id, available) {
+  if (!available) {
+    available = any
+  }
+  return { label: name, value: id, available: available }
 }
+
+const networkModes = [
+  networkMode('Overlay L2', 'overlay_l2'),
+  networkMode('Underlay IPVLAN', 'underlay_ipvlan', 'BareMetal'),
+  networkMode('VPC Router', 'vpc-router'),
+]
 const defaultNetworkMode = 'overlay_l2'
 const authURL = 'https://iam.eu-de.otc.t-systems.com/v3/auth/tokens'
 
@@ -491,7 +500,13 @@ export default Ember.Component.extend(ClusterDriver, {
   clusterVersionChoices: m2f(k8sVersions),
   clusterTypeChoices:    clusterTypes,
   diskTypeChoices:       a2f(diskTypes),
-  networkModeChoices:    m2f(networkModes),
+  networkModeChoices:    computed('config.clusterType', function () {
+    const type = String(get(this, 'config.clusterType'))
+    console.log(`Cluster type changed to ${type}. Checking available mode choices... `)
+    return networkModes.filter(e => {
+      return e.available === type || e.available === any
+    })
+  }),
   lbProtocolChoices:     a2f(lbProtocols),
 
   otc: computed('config.region', function () {
