@@ -15,7 +15,7 @@ const BASE = 'component/';
 const DIST = 'dist/';
 const TMP = 'tmp/';
 const ASSETS = 'assets/';
-const DRIVER_NAME = 'otc';
+const DRIVER_NAME = 'otccce';
 
 console.log('Driver Name:', DRIVER_NAME);
 
