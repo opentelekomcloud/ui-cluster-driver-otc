@@ -667,6 +667,9 @@ export default Ember.Component.extend(ClusterDriver, {
 
   vpcChoices: computed('vpcs', function () {
     const vpcs = get(this, 'vpcs')
+    if (!vpcs) {
+      return []
+    }
     return vpcs.map((vpc) => ({ label: `${vpc.name} (${vpc.id})`, value: vpc.id }))
   }),
 
@@ -684,6 +687,9 @@ export default Ember.Component.extend(ClusterDriver, {
 
   subnetChoices: computed('subnets', function () {
     const subnets = get(this, 'subnets')
+    if (!subnets) {
+      return []
+    }
     return subnets.map((sn) => ({ label: `${sn.name}(${sn.cidr})`, value: sn.id }))
   }),
   updateSubnets: function () {
