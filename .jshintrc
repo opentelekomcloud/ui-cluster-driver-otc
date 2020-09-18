@@ -1,4 +1,5 @@
 {
+  "esversion": 9,
   "predef": [
     "document",
     "window",
@@ -42,6 +43,6 @@
   "strict": false,
   "white": false,
   "eqnull": true,
-  "esnext": true,
-  "unused": true
+  "unused": true,
+  "asi": true
 }
