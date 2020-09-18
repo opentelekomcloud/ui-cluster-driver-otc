@@ -84,8 +84,8 @@ const lbProtocols = [
 ]
 const k8sVersions = {
   'latest': '',
+  'v1.15':  'v1.15.6-r1',
   'v1.13':  'v1.13.10-r0',
-  'v1.11':  'v1.11.7-r2',
 }
 const defaultBandwidth = 100
 const defaultFloatingIPType = '5_bgp'
