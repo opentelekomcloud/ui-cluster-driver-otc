@@ -110,7 +110,32 @@ const networkModes = [
   networkMode('VPC Router', 'vpc-router'),
 ]
 const defaultNetworkMode = 'overlay_l2'
-const authURL = 'https://iam.eu-de.otc.t-systems.com/v3/auth/tokens'
+
+
+const groupInfoRe = /([\w-]+\d+)\((\w+)\)/
+const normal = 'normal'
+
+/**
+ * flavorInAZ returns function for checking if flavor is available in given AZ
+ * @param az
+ * @return {function(string): boolean}
+ */
+function flavorInAZ(az) {
+  return function (flavor) {
+    const props = flavor.os_extra_specs
+    if (!props) {
+      console.log(`Can't check properties of ${flavor.id}`)
+      return false
+    }
+    const azs = props['cond:operation:az'].split(',')  // list in form ['eu-de-01(normal)', 'eu-de-02(normal)']
+    const found = azs.find(a => {
+      const items = a.match(groupInfoRe)  // regex is slow but it's regex
+      return (items[1] === az) && (items[2] === normal)
+    })
+    return !!found;
+  }
+}
+
 
 /**
  * Convert string array to field array
@@ -301,9 +326,10 @@ export default Ember.Component.extend(ClusterDriver, {
   refresh:    false,
   step:       Steps.auth,
 
-  token:        {},
+  token:        '',
   vpcs:         [],
   subnets:      [],
+  flavors:      null,
   vpcEndpoint:  '',
   novaEndpoint: '',
 
@@ -367,7 +393,7 @@ export default Ember.Component.extend(ClusterDriver, {
         authenticationMode:      authModes.RBAC,
         authProxyCa:             '',
         // nodes config
-        availabilityZone:        '',
+        availabilityZone:        'eu-de-01',
         nodeFlavor:              's2.large.2',
         os:                      os,
         keyPair:                 '',
@@ -630,7 +656,8 @@ export default Ember.Component.extend(ClusterDriver, {
       get(this, 'config.password'),
       get(this, 'config.domainName'),
       get(this, 'config.projectName'),
-    ).then(() => {
+    ).then(t => {
+      set(this, 'token', t)
       return resolve()
     }).catch((e) => {
       set(this, 'errors', [e])
@@ -642,15 +669,18 @@ export default Ember.Component.extend(ClusterDriver, {
     const vpcs = get(this, 'vpcs')
     return vpcs.map((vpc) => ({ label: `${vpc.name} (${vpc.id})`, value: vpc.id }))
   }),
-  updateVPCs: function () {
+
+  updateVPCs: observer('token', function () {
+    if (get(this, 'token') === '') {
+      return
+    }
     return get(this, 'otc').listVPCs().then((vpcs) => {
       set(this, 'vpcs', vpcs)
-      return resolve()
     }).catch(() => {
       console.error('Failed to get VPCs')
       return reject()
     })
-  },
+  }),
 
   subnetChoices: computed('subnets', function () {
     const subnets = get(this, 'subnets')
@@ -674,13 +704,28 @@ export default Ember.Component.extend(ClusterDriver, {
     this.updateSubnets()
   }),
 
-  nodeFlavorChoices: computed('token', function () {
-    return get(this, 'otc').listNodeFlavors().then((flavors) => {
-      console.log('Flavors: ', flavors)
-      return flavors.map((f) => ({ label: f.name, value: f.id }))
-    }).catch(() => {
-      console.log('Failed to load node flavors')
+  // flavor loading is tooo slow when triggered on AZ change,
+  // so we preload it
+  nodeFlavorsLoad: observer('token', function () {
+    if (get(this, 'token') === '') {
+      return
+    }
+    return this.otc.listNodeFlavors().then((flavors) => {
+      const flavMap = {}
+      availabilityZones.forEach(az => {
+        flavMap[az] = flavors
+          .filter(flavorInAZ(az))
+          .map(a => ({label: a.name, value: a.id}))
+      })
+      console.log(`Flavors: ${JSON.stringify(flavMap)}`)
+      set(this, 'flavors', flavMap)
     })
+  }),
+
+  nodeFlavorChoices: computed('flavors', 'config.availabilityZone', function () {
+    const az = get(this, 'config.availabilityZone')
+    const flavorMap = get(this, 'flavors')
+    return flavorMap[az]
   }),
 
   keyPairChoices: computed('token', function () {
@@ -716,7 +761,7 @@ export default Ember.Component.extend(ClusterDriver, {
 
   maxNodes: computed('config.clusterFlavor', function () {
     const config = get(this, 'config.clusterFlavor')
-    const [_, __, size] = config.split('.')
+    const [, , size] = config.split('.')
     switch (size) {
       case 'small':
         return 50
@@ -764,7 +809,6 @@ export default Ember.Component.extend(ClusterDriver, {
     return this.authClient().then(() => {
       console.log('Move to cluster configuration');
       set(this, 'step', Steps.cluster);
-      this.updateVPCs()
       cb(true)
     }).catch((e) => {
       console.log('Failed to authorize\n' + e)
@@ -796,5 +840,4 @@ export default Ember.Component.extend(ClusterDriver, {
     set(this, 'step', Steps.lbEip)
     cb(true)
   },
-
 })

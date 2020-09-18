@@ -34,6 +34,7 @@ function otcClient(region) {
   return {
     vpcEndpoint:  '',
     novaEndpoint: '',
+    ecsEndpoint:  '',
 
     commonHeaders: {
       accepts:     appjson,
@@ -71,7 +72,6 @@ function otcClient(region) {
           }
         }
       })
-      console.log('Authorizing client: ' + json)
 
       return $.post({
         url:         viaProxy(authURL),
@@ -91,10 +91,15 @@ function otcClient(region) {
               console.log('vpc: ', JSON.stringify(srv))
               this.vpcEndpoint = viaProxy(withRegion(srv, region))
               break
+            case 'ecs':
+              console.log('ecs: ', JSON.stringify(srv))
+              this.ecsEndpoint = viaProxy(withRegion(srv, region))
+              break
           }
         })
-        this.commonHeaders['X-Auth-Token'] = jqXHR.getResponseHeader('x-subject-token')
-        return resolve()
+        const tokenID = jqXHR.getResponseHeader('x-subject-token')
+        this.commonHeaders['X-Auth-Token'] = tokenID
+        return resolve(tokenID)
       }).catch(e => {
         return reject(e.responseText)
       })
@@ -103,7 +108,7 @@ function otcClient(region) {
     listNodeFlavors() {
       return $.get({
         headers: this.commonHeaders,
-        url:     this.novaEndpoint + '/flavors'
+        url:     this.ecsEndpoint + '/cloudservers/flavors'
       }).then(body => {
         return resolve(body.flavors)
       }).catch(e => {
@@ -258,7 +263,7 @@ function otcClient(region) {
     listKeyPairs() {
       return $.get({
         headers: this.commonHeaders,
-        url: `${this.novaEndpoint}/os-keypairs`,
+        url:     `${this.novaEndpoint}/os-keypairs`,
       }).then(data => {
         return resolve(data.keypairs)
       }).catch(e => {
