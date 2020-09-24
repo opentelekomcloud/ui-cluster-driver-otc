@@ -45,15 +45,6 @@
       }}
         <div class="row">
           <div class="col span-6 mb-0">
-            <label>{{t 'cluster.clusterVersion.label'}}{{field-required}}</label>
-            {{#input-or-display editable=(eq mode "new")  value=config.clusterVersion}}
-              {{new-select class="form-control"
-                           content=clusterVersionChoices
-                           value=config.clusterVersion
-              }}
-            {{/input-or-display}}
-          </div>
-          <div class="col span-6 mb-0">
             <label>{{t 'cluster.clusterType.label'}}{{field-required}}</label>
             {{#input-or-display editable=false  value=config.clusterType}}
               {{new-select class="form-control"
@@ -62,8 +53,6 @@
               }}
             {{/input-or-display}}
           </div>
-        </div>
-        <div class="row">
           <div class="col span-6 mb-0">
             <label>{{t 'cluster.clusterFlavor.label'}}{{field-required}}</label>
             {{#input-or-display editable=(eq mode "new") value=config.clusterFlavor}}
@@ -74,19 +63,18 @@
                                   value=config.clusterFlavor}}
             {{/input-or-display}}
           </div>
+        </div>
+        <div class="row">
           <div class="col span-6 mb-0">
-            <label>{{t 'cluster.nodeCount.label'}}{{field-required}}</label>
-            {{#input-or-display editable=(or (eq mode "new") eq mode "editing") value=config.nodeCount}}
-              {{input type="number"
-                      min=1
-                      max=maxNodes
-                      name="node-count"
-                      classNames="form-control"
-                      value=config.nodeCount}}
+            <label>{{t 'cluster.clusterVersion.label'}}{{field-required}}</label>
+            {{#input-or-display editable=(eq mode "new")  value=config.clusterVersion}}
+              {{new-select class="form-control"
+                           content=clusterVersionChoices
+                           value=config.clusterVersion
+              }}
             {{/input-or-display}}
           </div>
         </div>
-
         <div class="row">
           <div class="col span-6 mb-0">
             <label>{{t 'cluster.containerNetworkMode.label'}}{{field-required}}</label>
@@ -324,6 +312,17 @@
                              expand=(action expandFn)
       }}
         <div class="row">
+          <div class="col span-6 mb-0">
+            <label>{{t 'cluster.nodeCount.label'}}{{field-required}}</label>
+            {{#input-or-display editable=(or (eq mode "new") eq mode "editing") value=config.nodeCount}}
+              {{input type="number"
+                      min=1
+                      max=maxNodes
+                      name="node-count"
+                      classNames="form-control"
+                      value=config.nodeCount}}
+            {{/input-or-display}}
+          </div>
           <div class="col span-6 mb-0">
             <label>{{t 'cluster.nodeFlavor.label'}}{{field-required}}</label>
             {{#input-or-display editable=(eq mode "new")  value=config.nodeFlavor}}
