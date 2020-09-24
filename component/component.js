@@ -261,7 +261,7 @@ const languages = {
       disk:                    chapter(
         'Disks Configuration',
         'Configure the disks attached to node instances',
-        'Next: Setup Load Balancer',
+        'Finish & Create Cluster',
       ),
       rootVolumeSize:          field(
         'Root Disk Size, GB',
@@ -275,24 +275,6 @@ const languages = {
         'Minimum 100 GB'
       ),
       dataVolumeType:          field('Data Disk Type'),
-      // LB bandwidth config
-      loadbalancer:            chapter(
-        'Loadbalancer configuration',
-        'Configure LB',
-        'Finish & Create Cluster'
-      ),
-      createLoadBalancer:      field('Use load balancer for node access'),
-      newLBEip:                field('Create New Floating IP'),
-      oldLBEip:                field('Use Existing Floating IP'),
-      lbProtocol:              field('Load Balancer Protocol'),
-      lbPort:                  field('Load Balancer Port'),
-      lbFloatingIp:            field(
-        'Existing Floating IP',
-        '0.0.0.0',
-      ),
-      lbBandwidth:             field(
-        'Bandwidth Size (MBit/s)',
-      ),
       loadingNext:             'Loading Next...',
       newVPC:                  'Create New VPC',
       newSubnet:               'Create New Subnet',
@@ -403,13 +385,7 @@ export default Ember.Component.extend(ClusterDriver, {
         rootVolumeType:          diskTypes[0],
         dataVolumeType:          diskTypes[0],
         // LB config
-        createLoadBalancer:      true,
-        lbFloatingIp:            '',
-        appPort:                 8080,
-        appProtocol:             'TCP',
-        lbEipBandwidthSize:      defaultBandwidth,
-        lbEipType:               defaultFloatingIPType,
-        lbEipShareType:          defaultShareType,
+        createLoadBalancer:      false,
       });
     }
     set(this, 'config', config);
@@ -487,8 +463,6 @@ export default Ember.Component.extend(ClusterDriver, {
           return this.toNodeConfig(cb)
         case Steps.node:
           return this.toDiskConfig(cb)
-        case Steps.disk:
-          return this.tolbFloatingIp(cb)
         default:
           console.log('Saving driver with config: \n' + JSON.stringify(get(this, 'cluster')))
           this.send('driverSave', cb);
@@ -613,8 +587,6 @@ export default Ember.Component.extend(ClusterDriver, {
         return 'cluster.node.next'
       case Steps.disk:
         return 'cluster.disk.next'
-      case Steps.lbEip:
-        return 'cluster.loadbalancer.next'
       default:
         return 'Finish'
     }
