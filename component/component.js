@@ -494,10 +494,6 @@ export default Ember.Component.extend(ClusterDriver, {
           this.send('driverSave', cb);
       }
     },
-    cancel() {
-      // probably should not remove this as its what every other driver uses to get back
-      get(this, 'router').transitionTo('global-admin.clusters.index');
-    },
   },
 
 
