@@ -526,6 +526,11 @@ export default Ember.Component.extend(ClusterDriver, {
       !(get(this, 'newVPC.name') && get(this, 'newVPC.cidr'))
     set(this, 'newVPCFieldsMissing', missing)
   }),
+  onNewVPCSelection:      observer('newVPC.create', function () {
+    if (get(this, 'newVPC.create')) {
+      set(this, 'config.vpcId', '')
+    }
+  }),
   newSubnetFieldsMissing: false,
   onNewSubnetInput:       observer('newSubnet.create', 'newSubnet.name', 'newSubnet.cidr', function () {
     const missing = get(this, 'newSubnet.create') &&
@@ -663,7 +668,8 @@ export default Ember.Component.extend(ClusterDriver, {
   updateSubnets: function () {
     const vpcId = get(this, 'config.vpcId')
     if (!vpcId) {
-      return []
+      set(this, 'subnets', [])
+      return resolve()
     }
     return get(this, 'otc').listSubnets(vpcId).then((subnets) => {
       console.log('Subnets: ', subnets)
@@ -676,6 +682,7 @@ export default Ember.Component.extend(ClusterDriver, {
   },
   vpcUpdated:    observer('config.vpcId', function () {
     this.updateSubnets()
+    set(this, 'config.subnetId', '')
   }),
 
   // flavor loading is tooo slow when triggered on AZ change,
@@ -689,7 +696,7 @@ export default Ember.Component.extend(ClusterDriver, {
       availabilityZones.forEach(az => {
         flavMap[az] = flavors
           .filter(flavorInAZ(az))
-          .map(a => ({label: a.name, value: a.id}))
+          .map(a => ({ label: a.name, value: a.id }))
       })
       console.log(`Flavors: ${JSON.stringify(flavMap)}`)
       set(this, 'flavors', flavMap)
