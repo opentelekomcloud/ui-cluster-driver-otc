@@ -37,5 +37,8 @@
     "replace-string": "^2.0.0",
     "yargs": "^15.3.1",
     "lodash.template": ">=4.5.0"
+  },
+  "dependencies": {
+    "@opentelekomcloud/oms": "0.0.1"
   }
 }
