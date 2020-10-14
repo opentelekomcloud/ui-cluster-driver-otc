@@ -38,6 +38,7 @@
     "jshint": "2.9.7",
     "lodash.template": ">=4.5.0",
     "replace-string": "^2.0.0",
+    "yargs-parser": ">=13.1.2",
     "yargs": "^15.3.1"
   }
 }
