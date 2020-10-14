@@ -23,6 +23,7 @@
     "@babel/preset-env": "^7.2.3",
     "babel-plugin-add-module-exports": "^1.0.2",
     "babel-plugin-transform-es2015-modules-amd": "^6.24.1",
+    "babel-plugin-transform-remove-console": "^6.9.4",
     "del": "3.0.0",
     "gulp": "4.0.0",
     "gulp-append": "^0.3.4",
@@ -30,15 +31,13 @@
     "gulp-clean": "0.4.0",
     "gulp-concat": "2.6.1",
     "gulp-connect": "5.7.0",
+    "gulp-include": "^2.4.1",
     "gulp-jshint": "2.1.0",
     "gulp-replace": "1.0.0",
     "gulp-sourcemaps": "2.6.4",
     "jshint": "2.9.7",
+    "lodash.template": ">=4.5.0",
     "replace-string": "^2.0.0",
-    "yargs": "^15.3.1",
-    "lodash.template": ">=4.5.0"
-  },
-  "dependencies": {
-    "@opentelekomcloud/oms": "0.0.1"
+    "yargs": "^15.3.1"
   }
 }

@@ -1,9 +1,6 @@
 /*!!!!!!!!!!!Do not change anything between here (the DRIVERNAME placeholder will be automatically replaced at buildtime)!!!!!!!!!!!*/
 // https://github.com/rancher/ui/blob/master/lib/shared/addon/mixins/cluster-driver.js
 import ClusterDriver from 'shared/mixins/cluster-driver';
-import Client from '@opentelekomcloud/oms';
-import { VpcV1 } from '@opentelekomcloud/oms/dist/services/network';
-import { ComputeV2 } from '@opentelekomcloud/oms/dist/services/compute';
 
 // do not remove LAYOUT, it is replaced at build time with a base64 representation of the template of the hbs template
 // we do this to avoid converting template to a js file that returns a string and the cors issues that would come along
@@ -22,6 +19,7 @@ const set = Ember.set;
 const alias = Ember.computed.alias;
 const service = Ember.inject.service;
 const all = Ember.RSVP.all;
+const resolve = Ember.RSVP.resolve;
 const reject = Ember.RSVP.reject;
 
 const equal = Ember.computed.equal;
@@ -296,6 +294,20 @@ const Steps = Object.freeze({
   lbEip:      70,
 })
 
+//=require ../vendor/client.min.js
+
+/**
+ * Convert external URL to rancher meta proxy's URL
+ * @param {string} url
+ * @returns {string}
+ */
+function viaProxy(url) {
+  const serverURL = window.location
+  const baseURL = `${serverURL.protocol}//${serverURL.host}`
+  url = url.replace('://', ':/')
+  return `${baseURL}/meta/proxy/${url}`
+}
+
 /*!!!!!!!!!!!DO NOT CHANGE START!!!!!!!!!!!*/
 export default Ember.Component.extend(ClusterDriver, {
   driverName:  '%%DRIVERNAME%%',
@@ -315,7 +327,7 @@ export default Ember.Component.extend(ClusterDriver, {
   token:   '',
   vpcs:    [],
   subnets: [],
-  flavors: null,
+  flavors: [],
   client:  null,
 
   newVPC:    { create: false, name: '', cidr: '192.168.0.0/16' },
@@ -401,7 +413,7 @@ export default Ember.Component.extend(ClusterDriver, {
   },
 
   createVPC(cb) {
-    const srv = get(this, 'client').getService(VpcV1)
+    const srv = get(this, 'client').getService(oms.VpcV1)
     return srv.createVPC({
       name: get(this, 'newVPC.name'),
       cidr: get(this, 'newVPC.cidr')
@@ -420,7 +432,7 @@ export default Ember.Component.extend(ClusterDriver, {
     })
   },
   createSubnet(cb) {
-    const srv = get(this, 'client').getService(VpcV1)
+    const srv = get(this, 'client').getService(oms.VpcV1)
     return srv.createSubnet({
       vpc_id:     get(this, 'config.vpcId'),
       name:       get(this, 'newSubnet.name'),
@@ -617,7 +629,7 @@ export default Ember.Component.extend(ClusterDriver, {
   }),
 
   authClient(domainName, username, password, projectName) {
-    const client = new Client({
+    const client = new oms.Client({
       auth: {
         auth_url:     authURL,
         domain_name:  domainName,
@@ -626,9 +638,17 @@ export default Ember.Component.extend(ClusterDriver, {
         project_name: projectName,
       }
     })
+    client.httpClient.injectPreProcessor((config) => {
+      if (config.baseURL !== '') {
+        config.baseURL = viaProxy(config.baseURL)
+      } else {
+        config.url = viaProxy(config.url)
+      }
+      return config
+    })
     return client.authenticate().then(() => {
-      set(this, 'token', client.tokenID)
       set(this, 'client', client)
+      set(this, 'token', client.tokenID)
       return resolve()
     }).catch((e) => {
       set(this, 'errors', [e])
@@ -648,7 +668,7 @@ export default Ember.Component.extend(ClusterDriver, {
     if (get(this, 'token') === '') {
       return
     }
-    const srv = get(this, 'client').getService(VpcV1)
+    const srv = get(this, 'client').getService(oms.VpcV1)
     return srv.listVPCs().then(vpcs => {
       set(this, 'vpcs', vpcs)
     }).catch(() => {
@@ -670,7 +690,7 @@ export default Ember.Component.extend(ClusterDriver, {
       set(this, 'subnets', [])
       return resolve()
     }
-    const srv = get(this, 'client').getService(VpcV1)
+    const srv = get(this, 'client').getService(oms.VpcV1)
     return srv.listSubnets(vpcId).then(subnets => {
       console.log('Subnets: ', subnets)
       set(this, 'subnets', subnets)
@@ -691,7 +711,8 @@ export default Ember.Component.extend(ClusterDriver, {
     if (get(this, 'token') === '') {
       return
     }
-    return this.client.listFlavors().then(flavors => {
+    const srv = get(this, 'client').getService(oms.ComputeV1)
+    return srv.listFlavors().then(flavors => {
       const flavMap = {}
       availabilityZones.forEach(az => {
         flavMap[az] = flavors
@@ -713,7 +734,7 @@ export default Ember.Component.extend(ClusterDriver, {
     if (get(this, 'token') === '') {
       return []
     }
-    const srv = get(this, 'client').getService(ComputeV2)
+    const srv = get(this, 'client').getService(oms.ComputeV2)
     return srv.listKeyPairs().then(keyPairs => {
       console.log('Received key pairs: ', keyPairs)
       return keyPairs.map(k => {

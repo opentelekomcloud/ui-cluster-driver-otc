@@ -5,6 +5,7 @@ const gulpConcat = require('gulp-concat');
 const gulpConnect = require('gulp-connect');
 const replace = require('gulp-replace');
 const babel = require('gulp-babel');
+const include = require('gulp-include')
 const argv = require('yargs').argv;
 const pkg = require('./package.json');
 const fs = require('fs');
@@ -53,6 +54,7 @@ gulp.task('babel', gulp.series('assets', function () {
     ],
     plugins:  [
       "add-module-exports",
+      "transform-remove-console",
       [
         "transform-es2015-modules-amd", {
         "noInterop": true,
@@ -72,6 +74,10 @@ gulp.task('babel', gulp.series('assets', function () {
   return gulp.src([
     `${BASE}component.js`
   ])
+    .pipe(include({
+      extensions:   'js',
+    }))
+    .on('error', console.log)
     .pipe(replace('const LAYOUT;', `const LAYOUT = '${hbs}';`))
     .pipe(replace(NAME_TOKEN, DRIVER_NAME))
     .pipe(babel(opts))
@@ -118,19 +124,10 @@ gulp.task('alias', gulp.series('rexport', function () {
     .pipe(gulp.dest(TMP));
 }));
 
-gulp.task('client', gulp.series('alias', function () {
-  return gulp.src([
-    `${BASE}client.js`
-  ])
-    .pipe(replace(NAME_TOKEN, DRIVER_NAME))
-    .pipe(gulpConcat(`client.js`, { newLine: '\n' }))
-    .pipe(gulp.dest(TMP));
-}))
 
-gulp.task('compile', gulp.series('client', function () {
+gulp.task('compile', gulp.series('alias', function () {
   return gulp.src([
     `${TMP}component.js`,
-    `${TMP}client.js`,
     `${TMP}rexport.js`,
     `${TMP}alias.js`,
   ])
