@@ -19,6 +19,7 @@ const set = Ember.set;
 const alias = Ember.computed.alias;
 const service = Ember.inject.service;
 const all = Ember.RSVP.all;
+const resolve = Ember.RSVP.resolve;
 const reject = Ember.RSVP.reject;
 
 const equal = Ember.computed.equal;
@@ -27,6 +28,7 @@ const setProperties = Ember.setProperties;
 
 /*!!!!!!!!!!!GLOBAL CONST END!!!!!!!!!!!*/
 const domains = '*.otc.t-systems.com'
+const authURL = 'https://iam.eu-de.otc.t-systems.com/v3'
 const clusterFlavors = [
   'cce.s1.small',
   'cce.s1.medium',
@@ -118,7 +120,7 @@ const normal = 'normal'
 /**
  * flavorInAZ returns function for checking if flavor is available in given AZ
  * @param az
- * @return {function(string): boolean}
+ * @return {function(any): boolean}
  */
 function flavorInAZ(az) {
   return function (flavor) {
@@ -292,6 +294,20 @@ const Steps = Object.freeze({
   lbEip:      70,
 })
 
+//=require ../vendor/client.min.js
+
+/**
+ * Convert external URL to rancher meta proxy's URL
+ * @param {string} url
+ * @returns {string}
+ */
+function viaProxy(url) {
+  const serverURL = window.location
+  const baseURL = `${serverURL.protocol}//${serverURL.host}`
+  url = url.replace('://', ':/')
+  return `${baseURL}/meta/proxy/${url}`
+}
+
 /*!!!!!!!!!!!DO NOT CHANGE START!!!!!!!!!!!*/
 export default Ember.Component.extend(ClusterDriver, {
   driverName:  '%%DRIVERNAME%%',
@@ -308,12 +324,11 @@ export default Ember.Component.extend(ClusterDriver, {
   refresh:    false,
   step:       Steps.auth,
 
-  token:        '',
-  vpcs:         [],
-  subnets:      [],
-  flavors:      null,
-  vpcEndpoint:  '',
-  novaEndpoint: '',
+  token:   '',
+  vpcs:    [],
+  subnets: [],
+  flavors: [],
+  client:  null,
 
   newVPC:    { create: false, name: '', cidr: '192.168.0.0/16' },
   newSubnet: { create: false, name: '', cidr: '192.168.0.0/24', gatewayIP: '192.168.0.1' },
@@ -398,31 +413,36 @@ export default Ember.Component.extend(ClusterDriver, {
   },
 
   createVPC(cb) {
-    return get(this, 'otc').createVPC(
-      get(this, 'newVPC.name'),
-      get(this, 'newVPC.cidr'),
-    ).then((vpcID) => {
-      set(this, 'config.vpcId', vpcID)
+    const srv = get(this, 'client').getService(oms.VpcV1)
+    return srv.createVPC({
+      name: get(this, 'newVPC.name'),
+      cidr: get(this, 'newVPC.cidr')
+    }).then(vpc => {
+      set(this, 'config.vpcId', vpc.id)
       set(this, 'newVPC.create', false)
       set(this, 'newVPC.name', '')
+      set(this, 'newVPC.cidr', '')
       set(this, 'errors', [])
       this.updateVPCs()
       cb(true)
-    }).catch((er) => {
+    }).catch(er => {
       set(this, 'newVPC.name', '')
       set(this, 'errors', [JSON.stringify(er)])
       cb(false)
     })
   },
   createSubnet(cb) {
-    return get(this, 'otc').createSubnet(
-      get(this, 'config.vpcId'),
-      get(this, 'newSubnet.name'),
-      get(this, 'newSubnet.cidr'),
-      get(this, 'newSubnet.gatewayIP'),
-    ).then((subnetID) => {
-      set(this, 'config.subnetId', subnetID)
+    const srv = get(this, 'client').getService(oms.VpcV1)
+    return srv.createSubnet({
+      vpc_id:     get(this, 'config.vpcId'),
+      name:       get(this, 'newSubnet.name'),
+      cidr:       get(this, 'newSubnet.cidr'),
+      gateway_ip: get(this, 'newSubnet.gatewayIP')
+    }).then(subnet => {
+      set(this, 'config.subnetId', subnet.id)
       set(this, 'newSubnet.name', '')
+      set(this, 'newSubnet.cidr', '')
+      set(this, 'newSubnet.gatewayIP', '')
       set(this, 'newSubnet.create', false)
       set(this, 'errors', [])
       this.updateSubnets()
@@ -504,13 +524,8 @@ export default Ember.Component.extend(ClusterDriver, {
     })
   }),
   lbProtocolChoices:     a2f(lbProtocols),
-
-  otc: computed('config.region', function () {
-    return otcClient(get(this, 'config.region'))
-  }),
-
-  authFieldsMissing:  true,
-  onAuthFieldsChange: observer('config.username', 'config.password', 'config.domainName', 'config.projectName', function () {
+  authFieldsMissing:     true,
+  onAuthFieldsChange:    observer('config.username', 'config.password', 'config.domainName', 'config.projectName', function () {
     const missing = !(
       get(this, 'config.username') &&
       get(this, 'config.password') &&
@@ -569,7 +584,7 @@ export default Ember.Component.extend(ClusterDriver, {
     }
   }),
 
-  createLabel:  computed('step', 'newVPC.create', 'newSubnet.create', function () {
+  createLabel: computed('step', 'newVPC.create', 'newSubnet.create', function () {
     const step = get(this, 'step')
     switch (step) {
       case Steps.auth:
@@ -596,21 +611,11 @@ export default Ember.Component.extend(ClusterDriver, {
         return 'Finish'
     }
   }),
-  needLB:       computed('config.createLoadBalancer', function () {
-    return get(this, 'config.createLoadBalancer')
-  }),
-  newLBEip:     true,
-  newMasterIP:  true,  // just for initial value
-  needNewLBEip: computed('needLB', 'newLBEip', function () {
-    if (this.editing) {
-      return false
-    }
-    return get(this, 'needLB') && get(this, 'newLBEip')
-  }),
+  newMasterIP: true,  // just for initial value
 
   clusterNameChanged: observer('cluster.name', function () {
     const name = get(this, 'cluster.name')
-    console.log('Cluster name is ' + name + ' now')
+    console.debug('Cluster name is ' + name + ' now')
     set(this, 'config.clusterName', name)
     set(this, 'config.name', name)
     set(this, 'config.displayName', name)
@@ -623,14 +628,27 @@ export default Ember.Component.extend(ClusterDriver, {
     }
   }),
 
-  authClient() {
-    return get(this, 'otc').authenticate(
-      get(this, 'config.username'),
-      get(this, 'config.password'),
-      get(this, 'config.domainName'),
-      get(this, 'config.projectName'),
-    ).then(t => {
-      set(this, 'token', t)
+  authClient(domainName, username, password, projectName) {
+    const client = new oms.Client({
+      auth: {
+        auth_url:     authURL,
+        domain_name:  domainName,
+        username:     username,
+        password:     password,
+        project_name: projectName,
+      }
+    })
+    client.httpClient.injectPreProcessor((config) => {
+      if (config.baseURL !== '') {
+        config.baseURL = viaProxy(config.baseURL)
+      } else {
+        config.url = viaProxy(config.url)
+      }
+      return config
+    })
+    return client.authenticate().then(() => {
+      set(this, 'client', client)
+      set(this, 'token', client.tokenID)
       return resolve()
     }).catch((e) => {
       set(this, 'errors', [e])
@@ -650,7 +668,8 @@ export default Ember.Component.extend(ClusterDriver, {
     if (get(this, 'token') === '') {
       return
     }
-    return get(this, 'otc').listVPCs().then((vpcs) => {
+    const srv = get(this, 'client').getService(oms.VpcV1)
+    return srv.listVPCs().then(vpcs => {
       set(this, 'vpcs', vpcs)
     }).catch(() => {
       console.error('Failed to get VPCs')
@@ -671,7 +690,8 @@ export default Ember.Component.extend(ClusterDriver, {
       set(this, 'subnets', [])
       return resolve()
     }
-    return get(this, 'otc').listSubnets(vpcId).then((subnets) => {
+    const srv = get(this, 'client').getService(oms.VpcV1)
+    return srv.listSubnets(vpcId).then(subnets => {
       console.log('Subnets: ', subnets)
       set(this, 'subnets', subnets)
       return resolve()
@@ -691,7 +711,8 @@ export default Ember.Component.extend(ClusterDriver, {
     if (get(this, 'token') === '') {
       return
     }
-    return this.otc.listNodeFlavors().then((flavors) => {
+    const srv = get(this, 'client').getService(oms.ComputeV1)
+    return srv.listFlavors().then(flavors => {
       const flavMap = {}
       availabilityZones.forEach(az => {
         flavMap[az] = flavors
@@ -713,16 +734,17 @@ export default Ember.Component.extend(ClusterDriver, {
     if (get(this, 'token') === '') {
       return []
     }
-    return get(this, 'otc').listKeyPairs().then((keyPairs) => {
+    const srv = get(this, 'client').getService(oms.ComputeV2)
+    return srv.listKeyPairs().then(keyPairs => {
       console.log('Received key pairs: ', keyPairs)
-      return keyPairs.map((k) => {
-        let name = k.keypair.name
+      return keyPairs.map(k => {
+        let name = k.name
         if (name.length > 20) {
           name = name.substring(0, 17) + '...'
         }
         return {
-          label: `${name} (${k.keypair.fingerprint})`,
-          value: k.keypair.name
+          label: `${name} (${k.fingerprint})`,
+          value: k.name
         }
       })
     }).catch(() => {
@@ -787,7 +809,12 @@ export default Ember.Component.extend(ClusterDriver, {
         'config.projectName': get(this, 'config.projectName').trim(),
       }
     );
-    return this.authClient().then(() => {
+    return this.authClient(
+      get(this, 'config.domainName'),
+      get(this, 'config.username'),
+      get(this, 'config.password'),
+      get(this, 'config.projectName')
+    ).then(() => {
       console.log('Move to cluster configuration');
       set(this, 'step', Steps.cluster);
       cb(true)
