@@ -294,7 +294,7 @@ const Steps = Object.freeze({
   lbEip:      70,
 })
 
-//=require ../vendor/client.min.js
+//=require ../vendor/*.js
 
 /**
  * Convert external URL to rancher meta proxy's URL
@@ -414,9 +414,14 @@ export default Ember.Component.extend(ClusterDriver, {
 
   createVPC(cb) {
     const srv = get(this, 'client').getService(oms.VpcV1)
+    const cidr = get(this, 'newVPC.cidr')
+    if (!isCidr(cidr)) {
+      set(this, 'errors', ['Invalid VPC CIDR'])
+      return cb(false)
+    }
     return srv.createVPC({
       name: get(this, 'newVPC.name'),
-      cidr: get(this, 'newVPC.cidr')
+      cidr: cidr
     }).then(vpc => {
       set(this, 'config.vpcId', vpc.id)
       set(this, 'newVPC.create', false)
@@ -433,11 +438,24 @@ export default Ember.Component.extend(ClusterDriver, {
   },
   createSubnet(cb) {
     const srv = get(this, 'client').getService(oms.VpcV1)
+    const cidr = get(this, 'newSubnet.cidr')
+    const gateway = get(this, 'newSubnet.gatewayIP')
+    const errors = []
+    if (!isCidr(cidr)) {
+      errors.push('Invalid Subnet CIDR')
+    }
+    if (!isIp(gateway)) {
+      errors.push('Invalid Gateway IP')
+    }
+    if (errors.length) {
+      set(this, 'errors', errors)
+      return cb(false)
+    }
     return srv.createSubnet({
       vpc_id:     get(this, 'config.vpcId'),
       name:       get(this, 'newSubnet.name'),
-      cidr:       get(this, 'newSubnet.cidr'),
-      gateway_ip: get(this, 'newSubnet.gatewayIP')
+      cidr:       cidr,
+      gateway_ip: gateway,
     }).then(subnet => {
       set(this, 'config.subnetId', subnet.id)
       set(this, 'newSubnet.name', '')
@@ -466,6 +484,11 @@ export default Ember.Component.extend(ClusterDriver, {
         case Steps.auth:
           return this.toClusterConfig(cb)
         case Steps.cluster:
+          const cidr = get(this, 'config.containerNetworkCidr')
+          if (!isCidr(cidr)) {
+            set(this, 'errors', ['Invalid cluster network CIDR'])
+            return cb(false)
+          }
           return this.toNetworkConfig(cb)
         case Steps.network:
           const newVPC = get(this, 'newVPC.create')
@@ -506,7 +529,7 @@ export default Ember.Component.extend(ClusterDriver, {
       set(this, 'errors', errors);
       return false;
     } else {
-      set(this, 'errors', null);
+      set(this, 'errors', []);
       return true;
     }
   },
