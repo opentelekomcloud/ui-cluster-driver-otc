@@ -818,6 +818,28 @@ export default Ember.Component.extend(ClusterDriver, {
     }
   }),
 
+  systemDiskLimit: [40, 1024],
+  limitSysDisk:    observer('config.rootVolumeSize', function () {
+    const [min, max] = get(this, 'systemDiskLimit')
+    const curr = get(this, 'config.rootVolumeSize')
+    if (curr < min) {
+      set(this, 'config.rootVolumeSize', min)
+    } else if (curr > max) {
+      set(this, 'config.rootVolumeSize', max)
+    }
+  }),
+
+  dataDiskLimit: [100, 32768],
+  limitDataDisk: observer('config.dataVolumeSize', function () {
+    const [min, max] = get(this, 'dataDiskLimit')
+    const curr = get(this, 'config.dataVolumeSize')
+    if (curr < min) {
+      set(this, 'config.dataVolumeSize', min)
+    } else if (curr > max) {
+      set(this, 'config.dataVolumeSize', max)
+    }
+  }),
+
   networkCreationDisabled: computed('step', function () {
     const step = get(this, 'step')
     return step !== Steps.network
