@@ -280,8 +280,8 @@
                       value=config.clusterEipBandwidthSize}}
                 {{input type="number"
                         name="master-bandwidth"
-                        min=10
-                        max=1000
+                        min=minBandwidth
+                        max=maxBandwidth
                         value=config.clusterEipBandwidthSize
                 }}
               {{/input-or-display}}
