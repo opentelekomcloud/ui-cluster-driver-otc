@@ -797,16 +797,21 @@ export default Ember.Component.extend(ClusterDriver, {
         return 1000
     }
   }),
+  minNodes: 1,
 
   limitNodes: observer('config.nodeCount', function () {
     const max = get(this, 'maxNodes')
     if (get(this, 'config.nodeCount') > max) {
       set(this, 'config.nodeCount', max)
     }
+    const min = get(this, 'minNodes')
+    if (get(this, 'config.nodeCount') < min) {
+      set(this, 'config.nodeCount', min)
+    }
   }),
 
-  minBandwidth: 1,
-  maxBandwidth: 1000,
+  minBandwidth:   1,
+  maxBandwidth:   1000,
   limitBandwidth: observer('config.clusterEipBandwidthSize', function () {
     const curr = get(this, 'config.clusterEipBandwidthSize')
     const min = get(this, 'minBandwidth')

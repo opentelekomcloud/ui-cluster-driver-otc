@@ -316,7 +316,7 @@
             <label>{{t 'cluster.nodeCount.label'}}{{field-required}}</label>
             {{#input-or-display editable=(or (eq mode "new") eq mode "editing") value=config.nodeCount}}
               {{input type="number"
-                      min=1
+                      min=minNodes
                       max=maxNodes
                       name="node-count"
                       classNames="form-control"
