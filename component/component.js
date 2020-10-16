@@ -798,7 +798,7 @@ export default Ember.Component.extend(ClusterDriver, {
     }
   }),
 
-  limitNodes: observer('maxNodes', function () {
+  limitNodes: observer('config.nodeCount', function () {
     const max = get(this, 'maxNodes')
     if (get(this, 'config.nodeCount') > max) {
       set(this, 'config.nodeCount', max)
