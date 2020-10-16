@@ -439,15 +439,23 @@ export default Ember.Component.extend(ClusterDriver, {
   createSubnet(cb) {
     const srv = get(this, 'client').getService(oms.VpcV1)
     const cidr = get(this, 'newSubnet.cidr')
+    const gateway = get(this, 'newSubnet.gatewayIP')
+    const errors = []
     if (!isCidr(cidr)) {
-      set(this, 'errors', ['Invalid Subnet CIDR'])
+      errors.push('Invalid Subnet CIDR')
+    }
+    if (!isIp(gateway)) {
+      errors.push('Invalid Gateway IP')
+    }
+    if (errors.length) {
+      set(this, 'errors', errors)
       return cb(false)
     }
     return srv.createSubnet({
       vpc_id:     get(this, 'config.vpcId'),
       name:       get(this, 'newSubnet.name'),
       cidr:       cidr,
-      gateway_ip: get(this, 'newSubnet.gatewayIP')
+      gateway_ip: gateway,
     }).then(subnet => {
       set(this, 'config.subnetId', subnet.id)
       set(this, 'newSubnet.name', '')
