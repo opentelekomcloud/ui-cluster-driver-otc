@@ -537,7 +537,7 @@ export default Ember.Component.extend(ClusterDriver, {
       const min = get(this, 'minNodes')
       const curr = get(this, 'config.nodeCount')
       if (curr < min || curr > max) {
-        errors.push(`Node count should is out of range ${min}-${max} for selected cluster flavor`)
+        errors.push(`Node count is out of range ${min}-${max} for selected cluster flavor`)
       }
     }
     if (step >= Steps.disk) {
