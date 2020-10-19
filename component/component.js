@@ -291,7 +291,6 @@ const Steps = Object.freeze({
   clusterEip: 40,
   node:       50,
   disk:       60,
-  last:       Infinity,
 })
 const lastStep = Math.max(...Object.values(Steps))
 
@@ -899,11 +898,6 @@ export default Ember.Component.extend(ClusterDriver, {
   toDiskConfig(cb) {
     set(this, 'errors', [])
     set(this, 'step', Steps.disk)
-    cb(true)
-  },
-  tolbFloatingIp(cb) {
-    set(this, 'errors', [])
-    set(this, 'step', Steps.lbEip)
     cb(true)
   },
 })
