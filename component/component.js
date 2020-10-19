@@ -900,4 +900,6 @@ export default Ember.Component.extend(ClusterDriver, {
     set(this, 'step', Steps.disk)
     cb(true)
   },
+
+  version: '%%DRIVERVERSION%%',
 })

@@ -1,5 +1,7 @@
 <section class="horizontal-form">
 
+  <label hidden="hidden" id="version">OpenTelekomCloud CCE driver UI {{version}}</label>
+
   {{#accordion-list showExpandAll=(eq mode "edit") as | al expandFn |}}
     {{#accordion-list-item title=(t 'cluster.auth.title')
                            expand=(action expandFn)
