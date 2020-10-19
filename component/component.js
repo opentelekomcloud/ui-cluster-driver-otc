@@ -291,8 +291,8 @@ const Steps = Object.freeze({
   clusterEip: 40,
   node:       50,
   disk:       60,
-  lbEip:      70,
 })
+const lastStep = Math.max(...Object.values(Steps))
 
 //=require ../vendor/*.js
 
@@ -479,16 +479,13 @@ export default Ember.Component.extend(ClusterDriver, {
         this.send('driverSave', cb);
         return
       }
-      const step = get(this, 'step')
-      switch (step) {
+      if (!this.validate()) {
+        return cb(false)
+      }
+      switch (get(this, 'step')) {
         case Steps.auth:
           return this.toClusterConfig(cb)
         case Steps.cluster:
-          const cidr = get(this, 'config.containerNetworkCidr')
-          if (!isCidr(cidr)) {
-            set(this, 'errors', ['Invalid cluster network CIDR'])
-            return cb(false)
-          }
           return this.toNetworkConfig(cb)
         case Steps.network:
           const newVPC = get(this, 'newVPC.create')
@@ -519,8 +516,45 @@ export default Ember.Component.extend(ClusterDriver, {
     // Get generic API validation errors
     this._super();
     const errors = get(this, 'errors') || [];
-    if (!get(this, 'cluster.name')) {
-      errors.push('Name is required');
+    const step = get(this, 'step')
+    const cidr = get(this, 'config.containerNetworkCidr')
+    if (step >= Steps.cluster) {
+      if (!isCidr(cidr)) {
+        errors.push('Invalid cluster network CIDR')
+      }
+    }
+    if (step >= Steps.clusterEip) {
+      const curr = get(this, 'config.clusterEipBandwidthSize')
+      const min = get(this, 'minBandwidth')
+      const max = get(this, 'maxBandwidth')
+      if (curr < min || curr > max) {
+        errors.push(`Cluster bandwidth is out of range ${min}-${max} (Mb)`)
+      }
+    }
+    if (step >= Steps.node) {
+      const max = get(this, 'maxNodes')
+      const min = get(this, 'minNodes')
+      const curr = get(this, 'config.nodeCount')
+      if (curr < min || curr > max) {
+        errors.push(`Node count is out of range ${min}-${max} for selected cluster flavor`)
+      }
+    }
+    if (step >= Steps.disk) {
+      const rootDisk = get(this, 'config.rootVolumeSize')
+      const dataDisk = get(this, 'config.dataVolumeSize')
+      const [minRoot, maxRoot] = get(this, 'systemDiskLimit')
+      const [minData, maxData] = get(this, 'dataDiskLimit')
+      if (rootDisk < minRoot || rootDisk > maxRoot) {
+        errors.push(`Root disk size is out of range ${minRoot}-${maxRoot}`)
+      }
+      if (dataDisk < minData || dataDisk > maxData) {
+        errors.push(`Data disk size is out of range ${minData}-${maxData}`)
+      }
+    }
+    if (step === lastStep) {
+      if (!get(this, 'cluster.name')) {
+        errors.push('Name is required');
+      }
     }
 
     // Set the array of errors for display,
@@ -799,51 +833,11 @@ export default Ember.Component.extend(ClusterDriver, {
   }),
   minNodes: 1,
 
-  limitNodes: observer('config.nodeCount', function () {
-    const max = get(this, 'maxNodes')
-    if (get(this, 'config.nodeCount') > max) {
-      set(this, 'config.nodeCount', max)
-    }
-    const min = get(this, 'minNodes')
-    if (get(this, 'config.nodeCount') < min) {
-      set(this, 'config.nodeCount', min)
-    }
-  }),
-
-  minBandwidth:   1,
-  maxBandwidth:   1000,
-  limitBandwidth: observer('config.clusterEipBandwidthSize', function () {
-    const curr = get(this, 'config.clusterEipBandwidthSize')
-    const min = get(this, 'minBandwidth')
-    const max = get(this, 'maxBandwidth')
-    if (curr > max) {
-      set(this, 'config.clusterEipBandwidthSize', max)
-    } else if (curr < min) {
-      set(this, 'config.clusterEipBandwidthSize', min)
-    }
-  }),
+  minBandwidth: 1,
+  maxBandwidth: 1000,
 
   systemDiskLimit: [40, 1024],
-  limitSysDisk:    observer('config.rootVolumeSize', function () {
-    const [min, max] = get(this, 'systemDiskLimit')
-    const curr = get(this, 'config.rootVolumeSize')
-    if (curr < min) {
-      set(this, 'config.rootVolumeSize', min)
-    } else if (curr > max) {
-      set(this, 'config.rootVolumeSize', max)
-    }
-  }),
-
-  dataDiskLimit: [100, 32768],
-  limitDataDisk: observer('config.dataVolumeSize', function () {
-    const [min, max] = get(this, 'dataDiskLimit')
-    const curr = get(this, 'config.dataVolumeSize')
-    if (curr < min) {
-      set(this, 'config.dataVolumeSize', min)
-    } else if (curr > max) {
-      set(this, 'config.dataVolumeSize', max)
-    }
-  }),
+  dataDiskLimit:   [100, 32768],
 
   networkCreationDisabled: computed('step', function () {
     const step = get(this, 'step')
@@ -904,11 +898,6 @@ export default Ember.Component.extend(ClusterDriver, {
   toDiskConfig(cb) {
     set(this, 'errors', [])
     set(this, 'step', Steps.disk)
-    cb(true)
-  },
-  tolbFloatingIp(cb) {
-    set(this, 'errors', [])
-    set(this, 'step', Steps.lbEip)
     cb(true)
   },
 })
