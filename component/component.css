@@ -1,3 +1,9 @@
 .machine-driver.%%DRIVERNAME%% {
   background-image: url('otc.png');
 }
+a[href$="%%DRIVERNAME%%"] .driver-content>.driver-name {
+  display: none;
+}
+a[href$="%%DRIVERNAME%%"] .driver-content:after {
+  content: 'Open Telekom Cloud CCE';
+}
