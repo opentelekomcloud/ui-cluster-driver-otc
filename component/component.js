@@ -524,11 +524,19 @@ export default Ember.Component.extend(ClusterDriver, {
       }
     }
     if (step >= Steps.clusterEip) {
-      const curr = get(this, 'config.clusterEipBandwidthSize')
-      const min = get(this, 'minBandwidth')
-      const max = get(this, 'maxBandwidth')
-      if (curr < min || curr > max) {
-        errors.push(`Cluster bandwidth is out of range ${min}-${max} (Mb)`)
+      const createNew = get(this, 'newMasterIP')
+      if (createNew) {
+        const curr = get(this, 'config.clusterEipBandwidthSize')
+        const min = get(this, 'minBandwidth')
+        const max = get(this, 'maxBandwidth')
+        if (curr < min || curr > max) {
+          errors.push(`Cluster bandwidth is out of range ${min}-${max} (Mb)`)
+        }
+      } else {
+        const eip = get(this, 'config.clusterFloatingIp')
+        if (!isIp(eip)) {
+          errors.push(`"${eip}" is not valid IP`)
+        }
       }
     }
     if (step >= Steps.node) {
