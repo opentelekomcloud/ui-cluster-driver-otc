@@ -6,8 +6,8 @@ OpenTelekomCloud CCE driver for Rancher
 
 1. Go to `Cluster Drivers`
 2. Click `Add cluster driver`
-3. Set download URL: https://csm-assets.obs.eu-de.otc.t-systems.com/kontainer-engine-driver-otc-0.2.1-linux-amd64.tgz
-4. Set custom UI URL: https://csm-assets.obs.eu-de.otc.t-systems.com/ui/component.js
+3. Set download URL: https://otc-rancher.obs.eu-de.otc.t-systems.com/cluster/driver/latest/kontainer-engine-driver-otccce_linux_amd64.tar.gz
+4. Set custom UI URL: https://otc-rancher.obs.eu-de.otc.t-systems.com/cluster/ui/latest/component.js
 5. Add `*.otc.t-systems.com` to whitelist domains
 6. Click "Create"
 
