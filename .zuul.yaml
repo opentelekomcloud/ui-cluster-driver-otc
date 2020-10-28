@@ -1,7 +1,7 @@
 ---
 
 - project:
-    merge_mode: squash-merge
+    merge-mode: squash-merge
     check:
       jobs:
         - js-build
@@ -9,6 +9,6 @@
       jobs:
         - js-build
         # TODO: rancher-integration-driver-latest
-    release:
-      jobs:
-        # TODO: publish artifacts to OBS
+    # release:
+    #  jobs:
+    #    # TODO: publish artifacts to OBS
