@@ -13,12 +13,13 @@ const replaceString = require('replace-string');
 
 const NAME_TOKEN = '%%DRIVERNAME%%';
 const VERSION_TOKEN = '%%DRIVERVERSION%%';
+
 const BASE = 'component/';
 const DIST = 'dist/';
 const TMP = 'tmp/';
 const ASSETS = 'assets/';
-const DRIVER_NAME = argv.name;
-const DRIVER_VERSION = argv['ui-version'];
+const DRIVER_NAME = argv.name || pkg.name.replace(/^ui-cluster-driver-/, '');
+const DRIVER_VERSION = pkg.version;
 
 console.log('Driver Name:', DRIVER_NAME);
 console.log('Driver Version:', DRIVER_VERSION);

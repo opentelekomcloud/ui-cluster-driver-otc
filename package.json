@@ -1,6 +1,6 @@
 {
-  "name": "ui-cluster-driver-otc",
-  "version": "0.0.1",
+  "name": "ui-cluster-driver-otccce",
+  "version": "1.0.0",
   "description": "OpenTelekomCloud CCE driver",
   "repository": {
     "type": "git",
