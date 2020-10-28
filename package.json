@@ -14,7 +14,7 @@
   "scripts": {
     "start": "./node_modules/.bin/gulp server",
     "clean": "./node_modules/.bin/gulp clean",
-    "build": "./node_modules/.bin/gulp build",
+    "build": "./node_modules/.bin/gulp build --name otccce --ui-version ${npm_package_version}",
     "upload": "./scripts/upload"
   },
   "homepage": "",
