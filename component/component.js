@@ -349,7 +349,7 @@ export default Ember.Component.extend(ClusterDriver, {
     get(this, 'intl.locale');
     this.loadLanguage(lang);
 
-    let config = get(this, 'cluster.otcEngineConfig')
+    let config = get(this, 'cluster.%%DRIVERNAME%%EngineConfig')
     let configField = get(this, 'configField')
 
     console.log('Config is ' + JSON.stringify(config))
