@@ -26,13 +26,13 @@
       <div class="row">
         <div class="col span-6 mb-0">
           <label>{{t 'cluster.username.label'}}{{field-required}}</label>
-          {{#input-or-display editable=(or (eq mode "new") eq mode "editing") value=config.username}}
+          {{#input-or-display editable=(or (eq mode "new") eq mode "edit") value=config.username}}
             {{input type="text" name="username" classNames="form-control" value=config.username}}
           {{/input-or-display}}
         </div>
         <div class="col span-6 mb-0">
           <label>{{t 'cluster.password.label'}}{{field-required}}</label>
-          {{#input-or-display editable=(or (eq mode "new") eq mode "editing") value=config.password}}
+          {{#input-or-display editable=(or (eq mode "new") eq mode "edit") value=config.password}}
             {{input type="password" name="passsword" classNames="form-control" value=config.password}}
           {{/input-or-display}}
         </div>
@@ -306,7 +306,7 @@
       {{/accordion-list-item }}
     {{/if}}
 
-    {{#if (gte step 50)}}
+    {{#if (or (gte step 50) (eq mode "edit"))}}
       {{#accordion-list-item title=(t 'cluster.node.title')
                              detail=(t 'cluster.node.detail')
                              expandOnInit=true
@@ -316,7 +316,7 @@
         <div class="row">
           <div class="col span-6 mb-0">
             <label>{{t 'cluster.nodeCount.label'}}{{field-required}}</label>
-            {{#input-or-display editable=(or (eq mode "new") eq mode "editing") value=config.nodeCount}}
+            {{#input-or-display editable=(or (eq mode "new") (eq mode "edit")) value=config.nodeCount}}
               {{input type="number"
                       min=minNodes
                       max=maxNodes
