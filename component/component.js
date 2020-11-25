@@ -852,6 +852,11 @@ export default Ember.Component.extend(ClusterDriver, {
     return step !== Steps.network
   }),
 
+  nodeCountChange: observer('config.nodeCount', function () {
+    const count = get(this, 'config.nodeCount')
+    console.log(`Node count is set to ${count}`)
+  }),
+
   loadLanguage(lang) {
     const translation = languages[lang];
     const intl = get(this, 'intl');

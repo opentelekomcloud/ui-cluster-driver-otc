@@ -18,8 +18,10 @@ const BASE = 'component/';
 const DIST = 'dist/';
 const TMP = 'tmp/';
 const ASSETS = 'assets/';
-const DRIVER_NAME = argv.name || pkg.name.replace(/^ui-cluster-driver-/, '');
+const DRIVER_NAME = argv.name || pkg.name.replace(/^ui-cluster-driver-/, '');
 const DRIVER_VERSION = pkg.version;
+
+const DEBUG = argv.debug
 
 console.log('Driver Name:', DRIVER_NAME);
 console.log('Driver Version:', DRIVER_VERSION);
@@ -51,6 +53,21 @@ gulp.task('assets', gulp.series('styles', function () {
     .pipe(gulp.dest(DIST));
 }));
 
+const plugins = [
+  "add-module-exports",
+  [
+    "transform-es2015-modules-amd", {
+    "noInterop": true,
+  }
+  ]
+]
+
+if (!DEBUG) {
+  plugins.push("transform-remove-console")
+} else {
+  console.log('DEBUG MODE! console.log calls won\'t be removed')
+}
+
 gulp.task('babel', gulp.series('assets', function () {
   const opts = {
     presets:  [
@@ -61,15 +78,7 @@ gulp.task('babel', gulp.series('assets', function () {
         }
       }]
     ],
-    plugins:  [
-      "add-module-exports",
-      "transform-remove-console",
-      [
-        "transform-es2015-modules-amd", {
-        "noInterop": true,
-      }
-      ]
-    ],
+    plugins:  plugins,
     comments: false,
     moduleId: `shared/components/cluster-driver/driver-${DRIVER_NAME}/component`
   };
