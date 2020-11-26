@@ -354,7 +354,7 @@ export default Ember.Component.extend(ClusterDriver, {
 
     console.log('Config is ' + JSON.stringify(config))
 
-    if (!config || JSON.stringify(config) === "{}") {  // observers initializes context
+    if (!this.editing) {
       config = get(this, 'globalStore').createRecord({
         type:                    configField,
         // authentication
@@ -475,9 +475,8 @@ export default Ember.Component.extend(ClusterDriver, {
   actions: {
     save(cb) {
       if (get(this, 'editing')) {
-        console.log('Saving driver with config: \n' + JSON.stringify(get(this, 'cluster')))
         this.send('driverSave', cb);
-        return
+        return cb(true)
       }
       if (!this.validate()) {
         return cb(false)
