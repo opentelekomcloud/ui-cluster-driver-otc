@@ -36,13 +36,6 @@ const clusterFlavors = [
   'cce.s2.small',
   'cce.s2.medium',
   'cce.s2.large',
-  'cce.t1.small',
-  'cce.t1.small',
-  'cce.t1.medium',
-  'cce.t1.large',
-  'cce.t2.small',
-  'cce.t2.medium',
-  'cce.t2.large',
 ]
 const defaultClusterFlavor = 'cce.s1.medium'
 const clusterFlavorDetails = `Cluster flavor, which cannot be changed after the cluster is created.
@@ -50,26 +43,16 @@ const clusterFlavorDetails = `Cluster flavor, which cannot be changed after the 
     cce.s1.small: small-scale, single-master VM cluster (≤ 50 nodes)
     cce.s1.medium: medium-scale, single-master VM cluster (≤ 200 nodes)
     cce.s1.large: large-scale, single-master VM cluster (≤ 1,000 nodes)
-    cce.t1.small: small-scale, single-master BMS cluster (≤ 10 nodes)
-    cce.t1.medium: medium-scale, single-master BMS cluster (≤ 100 nodes)
-    cce.t1.large: large-scale, single-master BMS cluster (≤ 500 nodes)
     cce.s2.small: small-scale, high availability VM cluster (≤ 50 nodes)
     cce.s2.medium: medium-scale, high availability VM cluster (≤ 200 nodes)
     cce.s2.large: large-scale, high availability VM cluster (≤ 1,000 nodes)
-    cce.t2.small: small-scale, high availability BMS cluster (≤ 10 nodes)
-    cce.t2.medium: medium-scale, high availability BMS cluster (≤ 100 nodes)
-    cce.t2.large: large-scale, high availability BMS cluster (≤ 500 nodes)
 `
 const instanceFlavorReference = 'https://docs.otc.t-systems.com/en-us/usermanual/ecs/en-us_topic_0177512565.html'
 const typeVM = 'VirtualMachine'
-const clusterTypes = [ // only VM is implemented for now
+const clusterTypes = [
   {
-    label: 'Virtual Machine',
+    label: 'Hybrid',
     value: typeVM
-  },
-  {
-    label: 'Bare Metal',
-    value: 'BareMetal'
   },
 ]
 const os = "EulerOS 2.5"
