@@ -86,6 +86,7 @@ const lbProtocols = [
 ]
 const k8sVersions = {
   'latest': '',
+  'v1.17':  'v1.17.9-r0',
   'v1.15':  'v1.15.6-r1',
   'v1.13':  'v1.13.10-r0',
 }
