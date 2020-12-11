@@ -440,6 +440,7 @@ export default Ember.Component.extend(ClusterDriver, {
       name:       get(this, 'newSubnet.name'),
       cidr:       cidr,
       gateway_ip: gateway,
+      dnsList:    ['100.125.4.25', '8.8.8.8'],
     }).then(subnet => {
       set(this, 'config.subnetId', subnet.id)
       set(this, 'newSubnet.name', '')
