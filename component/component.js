@@ -731,7 +731,7 @@ export default Ember.Component.extend(ClusterDriver, {
     if (!subnets) {
       return []
     }
-    return subnets.map((sn) => ({ label: `${sn.name}(${sn.cidr})`, value: sn.id }))
+    return subnets.map((sn) => ({ label: `${sn.name} (${sn.id})`, value: sn.id }))
   }),
   updateSubnets: function () {
     const vpcId = get(this, 'config.vpcId')
