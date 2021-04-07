@@ -80,6 +80,7 @@ gulp.task('babel', gulp.series('assets', function () {
     ],
     plugins:  plugins,
     comments: false,
+    compact: true,
     moduleId: `shared/components/cluster-driver/driver-${DRIVER_NAME}/component`
   };
 
