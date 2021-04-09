@@ -1,6 +1,6 @@
 {
   "name": "ui-cluster-driver-otccce",
-  "version": "1.0.3",
+  "version": "1.1-beta.1",
   "description": "OpenTelekomCloud CCE driver",
   "repository": {
     "type": "git",
@@ -21,6 +21,7 @@
   "devDependencies": {
     "@babel/core": "^7.2.2",
     "@babel/preset-env": "^7.2.3",
+    "@opentelekomcloud/oms": "^0.1.2",
     "babel-plugin-add-module-exports": "^1.0.2",
     "babel-plugin-transform-es2015-modules-amd": "^6.24.1",
     "babel-plugin-transform-remove-console": "^6.9.4",
@@ -35,6 +36,8 @@
     "gulp-jshint": "2.1.0",
     "gulp-replace": "1.0.0",
     "gulp-sourcemaps": "2.6.4",
+    "is-cidr": "^4.0.2",
+    "is-ip": "^3.1.0",
     "jshint": "2.9.7",
     "lodash.template": ">=4.5.0",
     "replace-string": "^2.0.0",
