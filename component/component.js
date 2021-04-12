@@ -2,6 +2,11 @@
 // https://github.com/rancher/ui/blob/master/lib/shared/addon/mixins/cluster-driver.js
 import ClusterDriver from 'shared/mixins/cluster-driver';
 
+// those are dev-only dependencies, they are replaced with packages in `vendor` by gulp
+import oms from '@opentelekomcloud/oms'; //=exclude
+import isCidr from 'is-cidr'; //=exclude
+import isIp from 'is-ip'; //=exclude
+
 // do not remove LAYOUT, it is replaced at build time with a base64 representation of the template of the hbs template
 // we do this to avoid converting template to a js file that returns a string and the cors issues that would come along
 // with that
@@ -101,6 +106,9 @@ const defaultNetworkMode = 'overlay_l2'
 const groupInfoRe = /([\w-]+\d+)\((\w+)\)/
 const normal = 'normal'
 
+const tokenAuth = 'token'
+const akskAuth = 'aksk'
+
 /**
  * flavorInAZ returns function for checking if flavor is available in given AZ
  * @param az
@@ -149,12 +157,17 @@ function field(label, placeholder = '', detail = '') {
   }
 }
 
-function chapter(title, detail = '', next) {
+function chapter(title, detail, next) {
   return {
     title:  title,
     next:   next,
     detail: detail,
   }
+}
+
+function proxifyConfig(config) {
+  config.url = viaProxy(config.url)
+  return config
 }
 
 const languages = {
@@ -308,7 +321,8 @@ export default Ember.Component.extend(ClusterDriver, {
   refresh:    false,
   step:       Steps.auth,
 
-  token:   '',
+  authenticated: false,
+
   vpcs:    [],
   subnets: [],
   flavors: [],
@@ -574,15 +588,34 @@ export default Ember.Component.extend(ClusterDriver, {
   }),
   lbProtocolChoices:     a2f(lbProtocols),
   authFieldsMissing:     true,
-  onAuthFieldsChange:    observer('config.username', 'config.password', 'config.domainName', 'config.projectName', function () {
-    const missing = !(
-      get(this, 'config.username') &&
-      get(this, 'config.password') &&
-      get(this, 'config.domainName') &&
-      get(this, 'config.projectName')
-    )
-    set(this, 'authFieldsMissing', missing)
-  }),
+  onAuthFieldsChange:    observer(
+    'authMethod',
+    'config.username', 'config.password', 'config.domainName', 'config.projectName',
+    'config.accessKey', 'config.secretKey',
+    function () {
+      const authMethod = get(this, 'authMethod')
+      let missing
+      switch (authMethod) {
+        case tokenAuth:
+          missing = !(
+            get(this, 'config.username') &&
+            get(this, 'config.password') &&
+            get(this, 'config.domainName') &&
+            get(this, 'config.projectName')
+          )
+          break
+        case akskAuth:
+          missing = !(
+            get(this, 'config.accessKey') &&
+            get(this, 'config.secretKey')
+          )
+          break
+      }
+
+      set(this, 'authFieldsMissing', missing)
+    }),
+
+  authMethod: tokenAuth,
 
   newVPCFieldsMissing:    false,
   onNewVPCInput:          observer('newVPC.create', 'newVPC.name', 'newVPC.cidr', function () {
@@ -677,27 +710,27 @@ export default Ember.Component.extend(ClusterDriver, {
     }
   }),
 
-  authClient(domainName, username, password, projectName) {
+  authClient() {
     const client = new oms.Client({
       auth: {
-        auth_url:     authURL,
-        domain_name:  domainName,
-        username:     username,
-        password:     password,
-        project_name: projectName,
+        auth_url:     viaProxy(authURL),
+        domain_name:  get(this, 'config.domainName'),
+        username:     get(this, 'config.username'),
+        password:     get(this, 'config.password'),
+        project_name: get(this, 'config.projectName'),
+        ak:           get(this, 'config.accessKey'),
+        sk:           get(this, 'config.secretKey'),
       }
-    })
-    client.httpClient.injectPreProcessor((config) => {
-      if (config.baseURL !== '') {
-        config.baseURL = viaProxy(config.baseURL)
-      } else {
-        config.url = viaProxy(config.url)
-      }
-      return config
     })
     return client.authenticate().then(() => {
       set(this, 'client', client)
-      set(this, 'token', client.tokenID)
+      set(this, 'authenticated', true)
+      const _previous = client.httpClient.beforeRequest.last || ((c) => c)
+      client.httpClient.beforeRequest.last = (c) => {
+        c = _previous(c)
+        c = proxifyConfig(c)
+        return c
+      }
       return resolve()
     }).catch((e) => {
       set(this, 'errors', [e])
@@ -713,8 +746,8 @@ export default Ember.Component.extend(ClusterDriver, {
     return vpcs.map((vpc) => ({ label: `${vpc.name} (${vpc.id})`, value: vpc.id }))
   }),
 
-  updateVPCs: observer('token', function () {
-    if (get(this, 'token') === '') {
+  updateVPCs: observer('authenticated', function () {
+    if (!get(this, 'authenticated')) {
       return
     }
     const srv = get(this, 'client').getService(oms.VpcV1)
@@ -756,8 +789,8 @@ export default Ember.Component.extend(ClusterDriver, {
 
   // flavor loading is tooo slow when triggered on AZ change,
   // so we preload it
-  nodeFlavorsLoad: observer('token', function () {
-    if (get(this, 'token') === '') {
+  nodeFlavorsLoad: observer('authenticated', function () {
+    if (!get(this, 'authenticated')) {
       return
     }
     const srv = get(this, 'client').getService(oms.ComputeV1)
@@ -779,8 +812,8 @@ export default Ember.Component.extend(ClusterDriver, {
     return flavorMap[az]
   }),
 
-  keyPairChoices: computed('token', function () {
-    if (get(this, 'token') === '') {
+  keyPairChoices: computed('authenticated', function () {
+    if (!get(this, 'authenticated')) {
       return []
     }
     const srv = get(this, 'client').getService(oms.ComputeV2)
@@ -861,14 +894,11 @@ export default Ember.Component.extend(ClusterDriver, {
         'config.username':    get(this, 'config.username').trim(),
         'config.domainName':  get(this, 'config.domainName').trim(),
         'config.projectName': get(this, 'config.projectName').trim(),
+        'config.accessKey':   get(this, 'config.accessKey').trim(),
+        'config.secretKey':   get(this, 'config.secretKey').trim(),
       }
     );
-    return this.authClient(
-      get(this, 'config.domainName'),
-      get(this, 'config.username'),
-      get(this, 'config.password'),
-      get(this, 'config.projectName')
-    ).then(() => {
+    return this.authClient().then(() => {
       console.log('Move to cluster configuration');
       set(this, 'step', Steps.cluster);
       cb(true)

@@ -80,7 +80,7 @@ gulp.task('babel', gulp.series('assets', function () {
     ],
     plugins:  plugins,
     comments: false,
-    compact: true,
+    compact:  true,
     moduleId: `shared/components/cluster-driver/driver-${DRIVER_NAME}/component`
   };
 
@@ -97,6 +97,7 @@ gulp.task('babel', gulp.series('assets', function () {
       extensions: 'js',
     }))
     .on('error', console.log)
+    .pipe(replace(/.+\s\/\/=exclude/g, ''))
     .pipe(replace('const LAYOUT;', `const LAYOUT = '${hbs}';`))
     .pipe(replace(NAME_TOKEN, DRIVER_NAME))
     .pipe(replace(VERSION_TOKEN, DRIVER_VERSION))
