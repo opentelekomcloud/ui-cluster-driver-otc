@@ -9,7 +9,7 @@
   "author": "T-Systems GmbH",
   "license": "Apache-2.0",
   "bugs": {
-    "url": ""
+    "url": "https://github.com/opentelekomcloud/kontainer-engine-driver-otc/issues"
   },
   "scripts": {
     "start": "./node_modules/.bin/gulp server",
@@ -17,7 +17,7 @@
     "build": "./node_modules/.bin/gulp build",
     "upload": "./scripts/upload"
   },
-  "homepage": "",
+  "homepage": "https://github.com/opentelekomcloud/kontainer-engine-driver-otc",
   "devDependencies": {
     "@babel/core": "^7.2.2",
     "@babel/preset-env": "^7.2.3",
