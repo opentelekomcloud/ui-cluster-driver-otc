@@ -5,10 +5,13 @@
     check:
       jobs:
         - js-build
+    check-post:
+      jobs:
+        - rancher-integration-latest
     gate:
       jobs:
         - js-build
-        # TODO: rancher-integration-driver-latest
+        - rancher-integration-latest
     # release:
     #  jobs:
     #    # TODO: publish artifacts to OBS
