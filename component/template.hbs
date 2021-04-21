@@ -7,36 +7,86 @@
                            expand=(action expandFn)
                            expandOnInit=true
     }}
-      <div class="row">
-        <div class="col span-6 mb-0">
-          <label>{{t 'cluster.domainName.label'}}{{field-required}}</label>
-          {{#input-or-display editable=(eq mode "new") value=config.domainName}}
-            {{input type="text" name="domain-name" placeholder=(t 'cluster.domainName.placeholder')
-                    classNames="form-control" value=config.domainName}}
-          {{/input-or-display}}
+      {{#if (eq mode "new")}}
+        <div class="row">
+          <div class="col span-6 mb-0">
+
+            <label>{{t 'cluster.aksk.label'}}</label>
+            {{radio-button
+                    name="auth-method"
+                    selection=authMethod
+                    value='aksk'
+            }}
+          </div>
+          <div class="col span-6 mb-0">
+            <label>{{t 'cluster.token.label'}}</label>
+            {{radio-button
+                    name="auth-method"
+                    selection=authMethod
+                    value='token'
+            }}
+          </div>
         </div>
-        <div class="col span-6 mb-0">
-          <label>{{t 'cluster.projectName.label'}}{{field-required}}</label>
-          {{#input-or-display editable=(eq mode "new") value=config.projectName}}
-            {{input type="text" name="project-name" placeholder=(t 'cluster.projectName.placeholder')
-                    classNames="form-control" value=config.projectName}}
-          {{/input-or-display}}
+      {{/if}}
+      {{#if (eq authMethod "aksk")}}
+        <div class="row">
+          <div class="col span-6 mb-0">
+            <label>{{t 'cluster.accessKey.label'}}{{field-required}}</label>
+            {{#input-or-display editable=(eq mode "new") value=config.accessKey}}
+              {{input type="text" name="access-key"
+                      classNames="form-control" value=config.accessKey}}
+            {{/input-or-display}}
+          </div>
+          <div class="col span-6 mb-0">
+            <label>{{t 'cluster.secretKey.label'}}{{field-required}}</label>
+            {{#input-or-display editable=(eq mode "new") value=config.secretKey}}
+              {{input type="password" name="secret-key"
+                      classNames="form-control" value=config.secretKey}}
+            {{/input-or-display}}
+          </div>
         </div>
-      </div>
-      <div class="row">
-        <div class="col span-6 mb-0">
-          <label>{{t 'cluster.username.label'}}{{field-required}}</label>
-          {{#input-or-display editable=(or (eq mode "new") eq mode "edit") value=config.username}}
-            {{input type="text" name="username" classNames="form-control" value=config.username}}
-          {{/input-or-display}}
+        <div class="row">
+          <div class="col span-6 mb-0">
+            <label>{{t 'cluster.projectName.label'}}{{field-required}}</label>
+            {{#input-or-display editable=(eq mode "new") value=config.projectName}}
+              {{input type="text" name="project-name" placeholder=(t 'cluster.projectName.placeholder')
+                      classNames="form-control" value=config.projectName}}
+            {{/input-or-display}}
+          </div>
         </div>
-        <div class="col span-6 mb-0">
-          <label>{{t 'cluster.password.label'}}{{field-required}}</label>
-          {{#input-or-display editable=(or (eq mode "new") eq mode "edit") value=config.password}}
-            {{input type="password" name="passsword" classNames="form-control" value=config.password}}
-          {{/input-or-display}}
+      {{/if}}
+      {{#if (eq authMethod "token")}}
+        <div class="row">
+          <div class="col span-6 mb-0">
+            <label>{{t 'cluster.domainName.label'}}{{field-required}}</label>
+            {{#input-or-display editable=(eq mode "new") value=config.domainName}}
+              {{input type="text" name="domain-name" placeholder=(t 'cluster.domainName.placeholder')
+                      classNames="form-control" value=config.domainName}}
+            {{/input-or-display}}
+          </div>
+          <div class="col span-6 mb-0">
+            <label>{{t 'cluster.projectName.label'}}{{field-required}}</label>
+            {{#input-or-display editable=(eq mode "new") value=config.projectName}}
+              {{input type="text" name="project-name" placeholder=(t 'cluster.projectName.placeholder')
+                      classNames="form-control" value=config.projectName}}
+            {{/input-or-display}}
+          </div>
         </div>
-      </div>
+        <div class="row">
+          <div class="col span-6 mb-0">
+            <label>{{t 'cluster.username.label'}}{{field-required}}</label>
+            {{#input-or-display editable=(or (eq mode "new") eq mode "edit") value=config.username}}
+              {{input type="text" name="username" classNames="form-control" value=config.username}}
+            {{/input-or-display}}
+          </div>
+          <div class="col span-6 mb-0">
+            <label>{{t 'cluster.password.label'}}{{field-required}}</label>
+            {{#input-or-display editable=(or (eq mode "new") eq mode "edit") value=config.password}}
+              {{input type="password" name="passsword" classNames="form-control" value=config.password}}
+            {{/input-or-display}}
+          </div>
+        </div>
+      {{/if}}
     {{/accordion-list-item}}
 
     {{#if (or (gte step 20) (eq mode "edit"))}}

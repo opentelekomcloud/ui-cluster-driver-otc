@@ -178,12 +178,12 @@ const languages = {
         'OTC credentials',
         'Next: Configure Cluster',
       ),
-      'ak/sk':                 field('Use AK/SK auth'),
+      'aksk':                 field('Use AK/SK auth'),
       // ak/sk auth:
       accessKey:               field('Access Key ID'),
       secretKey:               field('Secret Access key'),
       // token-based auth:
-      token:                   field('Token'),
+      token:                   field('Use token-based auth'),
       domainName:              field('Domain Name', 'OTC00000000000000000XXX'),
       username:                field('Username'),
       password:                field('Password'),
@@ -300,9 +300,8 @@ const lastStep = Math.max(...Object.values(Steps))
  */
 function viaProxy(url) {
   const serverURL = window.location
-  const baseURL = `${serverURL.protocol}//${serverURL.host}`
-  url = url.replace('://', ':/')
-  return `${baseURL}/meta/proxy/${url}`
+  const uri = new URL(url)
+  return `${serverURL.protocol}//${serverURL.host}/meta/proxy/${uri.host}${uri.pathname}${uri.search}`
 }
 
 /*!!!!!!!!!!!DO NOT CHANGE START!!!!!!!!!!!*/
@@ -313,7 +312,7 @@ export default Ember.Component.extend(ClusterDriver, {
   app:         service(),
   router:      service(),
   /*!!!!!!!!!!!DO NOT CHANGE END!!!!!!!!!!!*/
-  intl:        service(),
+  intl: service(),
 
   isNew:      equal('mode', 'new'),
   editing:    equal('mode', 'edit'),
@@ -354,51 +353,51 @@ export default Ember.Component.extend(ClusterDriver, {
 
     if (!this.editing) {
       config = get(this, 'globalStore').createRecord({
-        type:                    configField,
+        type: configField,
         // authentication
         // ak/sk
-        accessKey:               '',
-        secretKey:               '',
+        accessKey: '',
+        secretKey: '',
         // token auth
-        token:                   '',
-        username:                '',
-        password:                '',
-        domainName:              '',
-        projectName:             '',
-        region:                  'eu-de',
+        token:       '',
+        username:    '',
+        password:    '',
+        domainName:  '',
+        projectName: 'eu-de',
+        region:      'eu-de',
         // cluster settings
-        clusterName:             '',
-        displayName:             '',
-        clusterVersion:          '',
-        clusterType:             typeVM,
-        clusterFlavor:           defaultClusterFlavor,
-        nodeCount:               2,
-        clusterLabels:           ['origin=rancher-otc'],
+        clusterName:    '',
+        displayName:    '',
+        clusterVersion: '',
+        clusterType:    typeVM,
+        clusterFlavor:  defaultClusterFlavor,
+        nodeCount:      2,
+        clusterLabels:  ['origin=rancher-otc'],
         // cluster networking
-        vpcId:                   '',
-        subnetId:                '',
-        containerNetworkMode:    defaultNetworkMode,
-        containerNetworkCidr:    defaultClusterCIDR,
+        vpcId:                '',
+        subnetId:             '',
+        containerNetworkMode: defaultNetworkMode,
+        containerNetworkCidr: defaultClusterCIDR,
         // master eip
         clusterFloatingIp:       '',
         clusterEipBandwidthSize: defaultBandwidth,
         clusterEipType:          defaultFloatingIPType,
         clusterEipShareType:     defaultShareType,
         // nodes auth
-        authenticationMode:      authModes.RBAC,
-        authProxyCa:             '',
+        authenticationMode: authModes.RBAC,
+        authProxyCa:        '',
         // nodes config
-        availabilityZone:        'eu-de-01',
-        nodeFlavor:              's2.large.2',
-        os:                      os,
-        keyPair:                 '',
+        availabilityZone: 'eu-de-01',
+        nodeFlavor:       's2.large.2',
+        os:               os,
+        keyPair:          '',
         // node disks
-        rootVolumeSize:          40,
-        dataVolumeSize:          100,
-        rootVolumeType:          diskTypes[0],
-        dataVolumeType:          diskTypes[0],
+        rootVolumeSize: 40,
+        dataVolumeSize: 100,
+        rootVolumeType: diskTypes[0],
+        dataVolumeType: diskTypes[0],
         // LB config
-        createLoadBalancer:      false,
+        createLoadBalancer: false,
       });
     }
     set(this, 'config', config);
@@ -502,6 +501,7 @@ export default Ember.Component.extend(ClusterDriver, {
         case Steps.node:
           return this.toDiskConfig(cb)
         default:
+          this.sanitizeCredentials()
           console.log('Saving driver with config: \n' + JSON.stringify(get(this, 'cluster')))
           this.send('driverSave', cb);
       }
@@ -616,6 +616,27 @@ export default Ember.Component.extend(ClusterDriver, {
     }),
 
   authMethod: tokenAuth,
+  /**
+   * Remove redundant credentials depending on the auth method selected
+   */
+  sanitizeCredentials() {
+    const method = get(this, 'authMethod')
+    switch (method) {
+      case akskAuth:
+        setProperties(this,
+          {
+            'config.username':   '',
+            'config.password':   '',
+            'config.domainName': '',
+          })
+        break
+      case tokenAuth:
+        setProperties(this, {
+          'config.accessKey': '',
+          'config.secretKey': '',
+        })
+    }
+  },
 
   newVPCFieldsMissing:    false,
   onNewVPCInput:          observer('newVPC.create', 'newVPC.name', 'newVPC.cidr', function () {
@@ -710,27 +731,41 @@ export default Ember.Component.extend(ClusterDriver, {
     }
   }),
 
+  getCloudConfig() {
+    const cloudConfig = { auth: { auth_url: authURL } }
+    const authMethod = get(this, 'authMethod')
+    switch (authMethod) {
+      case tokenAuth:
+        cloudConfig.auth = {
+          ...cloudConfig.auth,
+          domain_name:  get(this, 'config.domainName'),
+          username:     get(this, 'config.username'),
+          password:     get(this, 'config.password'),
+          project_name: get(this, 'config.projectName'),
+        }
+        break
+      case akskAuth:
+        cloudConfig.auth = {
+          ...cloudConfig.auth,
+          ak:           get(this, 'config.accessKey'),
+          sk:           get(this, 'config.secretKey'),
+          project_name: get(this, 'config.projectName'),
+        }
+        break
+      default:
+        throw `unknown auth method: ${authMethod}`
+    }
+    return cloudConfig
+  },
+
   authClient() {
-    const client = new oms.Client({
-      auth: {
-        auth_url:     viaProxy(authURL),
-        domain_name:  get(this, 'config.domainName'),
-        username:     get(this, 'config.username'),
-        password:     get(this, 'config.password'),
-        project_name: get(this, 'config.projectName'),
-        ak:           get(this, 'config.accessKey'),
-        sk:           get(this, 'config.secretKey'),
-      }
-    })
+    const cloudConfig = this.getCloudConfig()
+    const client = new oms.Client(cloudConfig)
+    client.httpClient.beforeRequest.last = proxifyConfig
+    client.akskAuthHeader = 'X-Api-Auth-Header'
     return client.authenticate().then(() => {
       set(this, 'client', client)
       set(this, 'authenticated', true)
-      const _previous = client.httpClient.beforeRequest.last || ((c) => c)
-      client.httpClient.beforeRequest.last = (c) => {
-        c = _previous(c)
-        c = proxifyConfig(c)
-        return c
-      }
       return resolve()
     }).catch((e) => {
       set(this, 'errors', [e])
