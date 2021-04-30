@@ -761,6 +761,10 @@ export default Ember.Component.extend(ClusterDriver, {
   authClient() {
     const cloudConfig = this.getCloudConfig()
     const client = new oms.Client(cloudConfig)
+    client.httpClient.beforeRequest.push(opts => {
+      opts.headers.set('user-agent', navigator.userAgent)
+      return opts
+    })
     client.httpClient.beforeRequest.last = proxifyConfig
     client.akskAuthHeader = 'X-Api-Auth-Header'
     return client.authenticate().then(() => {
