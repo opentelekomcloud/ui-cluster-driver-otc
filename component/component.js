@@ -121,8 +121,11 @@ function flavorInAZ(az) {
       console.log(`Can't check properties of ${flavor.id}`)
       return false
     }
-    const azs = props['cond:operation:az'].split(',')  // list in form ['eu-de-01(normal)', 'eu-de-02(normal)']
-    const found = azs.find(a => {
+    const azs = props['cond:operation:az'] // list in form ['eu-de-01(normal)', 'eu-de-02(normal)']
+    if (!azs) {
+      return false
+    }
+    const found = azs.split(',').find(a => {
       const items = a.match(groupInfoRe)  // regex is slow but it's regex
       return (items[1] === az) && (items[2] === normal)
     })
