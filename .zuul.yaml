@@ -1,13 +1,18 @@
 ---
 
+- job:
+    name: js-build-ubuntu
+    parent: js-build
+    nodeset: ubuntu-focal
+
 - project:
     merge-mode: squash-merge
     check:
       jobs:
-        - js-build
+        - js-build-ubuntu
     gate:
       jobs:
-        - js-build
+        - js-build-ubuntu
         # TODO: rancher-integration-driver-latest
     # release:
     #  jobs:
