@@ -10,7 +10,6 @@
       {{#if (eq mode "new")}}
         <div class="row">
           <div class="col span-6 mb-0">
-
             <label>{{t 'cluster.aksk.label'}}</label>
             {{radio-button
                     name="auth-method"
@@ -25,6 +24,15 @@
                     selection=authMethod
                     value='token'
             }}
+          </div>
+          <div class="col span-6 mb-0">
+            <label>{{t 'cluster.region.label'}}{{field-required}}</label>
+            {{#input-or-display editable=(eq mode "new") value=config.region}}
+              {{searchable-select class="from-control"
+                                  classNames="form-control"
+                                  content=regionChoices
+                                  value=config.region}}
+            {{/input-or-display}}
           </div>
         </div>
       {{/if}}
@@ -385,8 +393,20 @@
               {{searchable-select
                       name="node-flavor"
                       classNames="form-control"
+                      selected=defaultNodeFlavor
                       content=nodeFlavorChoices
                       value=config.nodeFlavor}}
+            {{/input-or-display}}
+          </div>
+          <div class="col span-6 mb-0">
+            <label>{{t 'cluster.nodeOs.label'}}{{field-required}}</label>
+            {{#input-or-display editable=(eq mode "new")  value=config.os}}
+              {{searchable-select
+                name="node-os"
+                classNames="form-control"
+                selected=defaultOS
+                content=osChoices
+                value=config.os}}
             {{/input-or-display}}
           </div>
           <div class="col span-6 mb-0">
