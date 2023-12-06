@@ -405,6 +405,7 @@ export default Ember.Component.extend(ClusterDriver, {
       config = get(this, 'globalStore').createRecord({
         type: configField,
         // authentication
+        authUrl: 'https://iam.eu-de.otc.t-systems.com/v3',
         // ak/sk
         accessKey: '',
         secretKey: '',
@@ -733,6 +734,14 @@ export default Ember.Component.extend(ClusterDriver, {
     set(this, 'networkFieldsMissing', !(get(this, 'config.vpcId') && get(this, 'config.subnetId')))
 
   }),
+  authUrlChange:     observer('config.region', function () {
+    const regionName = String(get(this, 'config.region'))
+    let authURL = 'https://iam.' + regionName + '.otc.t-systems.com/v3'
+    if (regionName === 'eu-ch2'){
+      authURL = 'https://iam-pub.' + regionName + '.sc.otc.t-systems.com/v3'
+    }
+    set(this, 'config.authUrl', authURL)
+  }),
 
   fieldsMissing: computed('step', 'authFieldsMissing', 'networkFieldsMissing', 'config.keyPair', function () {
     const step = get(this, 'step')
@@ -796,11 +805,9 @@ export default Ember.Component.extend(ClusterDriver, {
   }),
 
   getCloudConfig() {
-    let authURL = 'https://iam.' + String(get(this, 'config.region')) + '.otc.t-systems.com/v3'
-    if (String(get(this, 'config.region')) === 'eu-ch2'){
-      authURL = 'https://iam-pub.' + String(get(this, 'config.region')) + '.sc.otc.t-systems.com/v3'
-    }
-    const cloudConfig = { auth: { auth_url:  authURL} }
+    const regionName = String(get(this, 'config.region'))
+    const authUrl = String(get(this, 'config.authUrl'))
+    const cloudConfig = { auth: { auth_url:  authUrl}, region: regionName}
     const authMethod = get(this, 'authMethod')
     switch (authMethod) {
       case tokenAuth:
