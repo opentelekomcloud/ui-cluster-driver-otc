@@ -43,8 +43,8 @@ const clusterFlavors = [
 ]
 const defaultClusterFlavor = 'cce.s1.medium'
 const defaultNodeFlavor = 's2.large.2'
-const os = ['EulerOS 2.5', 'CentOS 7.7', 'EulerOS 2.9', 'Ubuntu 22.04']
-const defaultOS = os[0]
+const nodeOs = ['EulerOS 2.5', 'CentOS 7.7', 'EulerOS 2.9', 'Ubuntu 22.04']
+const defaultOS = nodeOs[0]
 const clusterFlavorDetails = `Cluster flavor, which cannot be changed after the cluster is created.
 
     cce.s1.small: small-scale, single-master VM cluster (≤ 50 nodes)
@@ -190,9 +190,9 @@ function azs(region) {
 function osList(clusterVersion) {
   let result
   if (clusterVersion === 'v1.23'){
-    result = os.filter(item => item !== 'Ubuntu 22.04')
+    result = nodeOs.filter(item => item !== 'Ubuntu 22.04')
   } else {
-    result = os
+    result = nodeOs
   }
   return result
 }
@@ -440,7 +440,7 @@ export default Ember.Component.extend(ClusterDriver, {
         // nodes config
         availabilityZone: 'eu-de-01',
         nodeFlavor:       defaultNodeFlavor,
-        os:               defaultOS,
+        nodeOs:           defaultOS,
         keyPair:          '',
         // node disks
         rootVolumeSize: 40,

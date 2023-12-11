@@ -400,13 +400,13 @@
           </div>
           <div class="col span-6 mb-0">
             <label>{{t 'cluster.nodeOs.label'}}{{field-required}}</label>
-            {{#input-or-display editable=(eq mode "new")  value=config.os}}
+            {{#input-or-display editable=(eq mode "new")  value=config.nodeOs}}
               {{searchable-select
                 name="node-os"
                 classNames="form-control"
                 selected=defaultOS
                 content=osChoices
-                value=config.os}}
+                value=config.nodeOs}}
             {{/input-or-display}}
           </div>
           <div class="col span-6 mb-0">
