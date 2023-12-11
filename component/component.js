@@ -33,24 +33,26 @@ const setProperties = Ember.setProperties;
 
 /*!!!!!!!!!!!GLOBAL CONST END!!!!!!!!!!!*/
 const domains = '*.otc.t-systems.com'
-const authURL = 'https://iam.eu-de.otc.t-systems.com/v3'
 const clusterFlavors = [
   'cce.s1.small',
   'cce.s1.medium',
-  'cce.s1.large',
   'cce.s2.small',
   'cce.s2.medium',
   'cce.s2.large',
+  'cce.s2.xlarge',
 ]
 const defaultClusterFlavor = 'cce.s1.medium'
+const defaultNodeFlavor = 's2.large.2'
+const nodeOs = ['EulerOS 2.5', 'CentOS 7.7', 'EulerOS 2.9', 'Ubuntu 22.04']
+const defaultOS = nodeOs[0]
 const clusterFlavorDetails = `Cluster flavor, which cannot be changed after the cluster is created.
 
     cce.s1.small: small-scale, single-master VM cluster (≤ 50 nodes)
     cce.s1.medium: medium-scale, single-master VM cluster (≤ 200 nodes)
-    cce.s1.large: large-scale, single-master VM cluster (≤ 1,000 nodes)
     cce.s2.small: small-scale, high availability VM cluster (≤ 50 nodes)
     cce.s2.medium: medium-scale, high availability VM cluster (≤ 200 nodes)
     cce.s2.large: large-scale, high availability VM cluster (≤ 1,000 nodes)
+    cce.s2.xlarge: ultra-large-scale, high availability cluster (<= 2,000 nodes)
 `
 const instanceFlavorReference = 'https://docs.otc.t-systems.com/en-us/usermanual/ecs/en-us_topic_0177512565.html'
 const typeVM = 'VirtualMachine'
@@ -60,12 +62,21 @@ const clusterTypes = [
     value: typeVM
   },
 ]
-const os = "EulerOS 2.5"
+const regions = ['eu-de', 'eu-nl', 'eu-ch2']
 const diskTypes = ['SATA', 'SAS', 'SSD']
-const availabilityZones = [
+const availabilityZonesDE = [
   'eu-de-01',
   'eu-de-02',
   'eu-de-03',
+]
+const availabilityZonesNL = [
+  'eu-nl-01',
+  'eu-nl-02',
+  'eu-nl-03',
+]
+const availabilityZonesCH = [
+  'eu-ch2a',
+  'eu-ch2b',
 ]
 const lbProtocols = [
   'TCP',
@@ -74,9 +85,8 @@ const lbProtocols = [
 ]
 const k8sVersions = {
   'latest': '',
-  'v1.21':  'v1.21',
-  'v1.19':  'v1.19.10-r0',
-  'v1.17':  'v1.17.9-r0',
+  'v1.25':  'v1.25',
+  'v1.23':  'v1.23',
 }
 const defaultBandwidth = 100
 const defaultFloatingIPType = '5_bgp'
@@ -103,11 +113,12 @@ const networkModes = [
 const defaultNetworkMode = 'overlay_l2'
 
 
-const groupInfoRe = /([\w-]+\d+)\((\w+)\)/
+const groupInfoRe = /^(.*?)\((.*?)\)$/
 const normal = 'normal'
 
 const tokenAuth = 'token'
 const akskAuth = 'aksk'
+const r = 'region'
 
 /**
  * flavorInAZ returns function for checking if flavor is available in given AZ
@@ -152,6 +163,40 @@ function m2f(src) {
   return Object.entries(src).map((e) => ({ label: e[0], value: e[1] }))
 }
 
+/**
+ * Return proper availability zones based on region
+ * @param region {string}
+ * @returns {string[]}
+ */
+function azs(region) {
+  let availabilityZones
+  if (region === 'eu-de'){
+    availabilityZones = availabilityZonesDE
+  }
+  if (region === 'eu-nl'){
+    availabilityZones = availabilityZonesNL
+  }
+  if (region === 'eu-ch2'){
+    availabilityZones = availabilityZonesCH
+  }
+  return availabilityZones
+}
+
+/**
+ * Return proper supporte os based on cluster version
+ * @param clusterVersion {string}
+ * @returns {string[]}
+ */
+function osList(clusterVersion) {
+  let result
+  if (clusterVersion === 'v1.23'){
+    result = nodeOs.filter(item => item !== 'Ubuntu 22.04')
+  } else {
+    result = nodeOs
+  }
+  return result
+}
+
 function field(label, placeholder = '', detail = '') {
   return {
     label:       label,
@@ -181,7 +226,8 @@ const languages = {
         'OTC credentials',
         'Next: Configure Cluster',
       ),
-      'aksk':                 field('Use AK/SK auth'),
+      region:                  field('Region', 'eu-de', 'Your region'),
+      'aksk':                  field('Use AK/SK auth'),
       // ak/sk auth:
       accessKey:               field('Access Key ID'),
       secretKey:               field('Secret Access key'),
@@ -252,9 +298,10 @@ const languages = {
       ),
       nodeFlavor:              field(
         'Node Flavor',
-        '',
+        'Please select availability zone first',
         `See ${instanceFlavorReference} for available flavors`,
       ),
+      nodeOs:                  field('Node OS'),
       availabilityZone:        field('Availability Zone'),
       useExistingKeyPair:      field('Use existing key pair'),
       keyPair:                 field('SSH Key Pair'),
@@ -358,6 +405,7 @@ export default Ember.Component.extend(ClusterDriver, {
       config = get(this, 'globalStore').createRecord({
         type: configField,
         // authentication
+        authUrl: 'https://iam.eu-de.otc.t-systems.com/v3',
         // ak/sk
         accessKey: '',
         secretKey: '',
@@ -367,7 +415,7 @@ export default Ember.Component.extend(ClusterDriver, {
         password:    '',
         domainName:  '',
         projectName: 'eu-de',
-        region:      'eu-de',
+        region:      regions[0],
         // cluster settings
         clusterName:    '',
         displayName:    '',
@@ -391,8 +439,8 @@ export default Ember.Component.extend(ClusterDriver, {
         authProxyCa:        '',
         // nodes config
         availabilityZone: 'eu-de-01',
-        nodeFlavor:       's2.large.2',
-        os:               os,
+        nodeFlavor:       defaultNodeFlavor,
+        nodeOs:           defaultOS,
         keyPair:          '',
         // node disks
         rootVolumeSize: 40,
@@ -576,9 +624,18 @@ export default Ember.Component.extend(ClusterDriver, {
       return true;
     }
   },
-
   // Any computed properties or custom logic can go here
-  azChoices:             a2f(availabilityZones),
+  regionChoices:        a2f(regions),
+  azChoices:            computed('config.region', function () {
+    const r = String(get(this, 'config.region'))
+    console.log(`Region changed to ${r}. Checking available az choices... `)
+    return a2f(azs(r))
+  }),
+  osChoices:             computed('config.clusterVersion', function () {
+    const version = String(get(this, 'config.clusterVersion'))
+    console.log(`Cluster version changed to ${version}. Checking available os choices... `)
+    return a2f(osList(version))
+  }),
   clusterVersionChoices: m2f(k8sVersions),
   clusterTypeChoices:    clusterTypes,
   diskTypeChoices:       a2f(diskTypes),
@@ -594,7 +651,7 @@ export default Ember.Component.extend(ClusterDriver, {
   onAuthFieldsChange:    observer(
     'authMethod',
     'config.username', 'config.password', 'config.domainName', 'config.projectName',
-    'config.accessKey', 'config.secretKey',
+    'config.accessKey', 'config.secretKey', 'config.region',
     function () {
       const authMethod = get(this, 'authMethod')
       let missing
@@ -611,6 +668,11 @@ export default Ember.Component.extend(ClusterDriver, {
           missing = !(
             get(this, 'config.accessKey') &&
             get(this, 'config.secretKey')
+          )
+          break
+        case r:
+          missing = !(
+            get(this, 'config.region')
           )
           break
       }
@@ -671,6 +733,14 @@ export default Ember.Component.extend(ClusterDriver, {
     }
     set(this, 'networkFieldsMissing', !(get(this, 'config.vpcId') && get(this, 'config.subnetId')))
 
+  }),
+  authUrlChange:     observer('config.region', function () {
+    const regionName = String(get(this, 'config.region'))
+    let authURL = 'https://iam.' + regionName + '.otc.t-systems.com/v3'
+    if (regionName === 'eu-ch2'){
+      authURL = 'https://iam-pub.' + regionName + '.sc.otc.t-systems.com/v3'
+    }
+    set(this, 'config.authUrl', authURL)
   }),
 
   fieldsMissing: computed('step', 'authFieldsMissing', 'networkFieldsMissing', 'config.keyPair', function () {
@@ -735,7 +805,9 @@ export default Ember.Component.extend(ClusterDriver, {
   }),
 
   getCloudConfig() {
-    const cloudConfig = { auth: { auth_url: authURL } }
+    const regionName = String(get(this, 'config.region'))
+    const authUrl = String(get(this, 'config.authUrl'))
+    const cloudConfig = { auth: { auth_url:  authUrl}, region: regionName}
     const authMethod = get(this, 'authMethod')
     switch (authMethod) {
       case tokenAuth:
@@ -835,6 +907,7 @@ export default Ember.Component.extend(ClusterDriver, {
     if (!get(this, 'authenticated')) {
       return
     }
+    const availabilityZones = azs(String(get(this, 'config.region')))
     const srv = get(this, 'client').getService(oms.ComputeV1)
     return srv.listFlavors().then(flavors => {
       const flavMap = {}
