@@ -391,11 +391,12 @@
             <label>{{t 'cluster.nodeFlavor.label'}}{{field-required}}</label>
             {{#input-or-display editable=(eq mode "new")  value=config.nodeFlavor}}
               {{searchable-select
-                      name="node-flavor"
-                      classNames="form-control"
-                      selected=defaultNodeFlavor
-                      content=nodeFlavorChoices
-                      value=config.nodeFlavor}}
+                placeholder="Please select availability zone first"
+                name="node-flavor"
+                classNames="form-control"
+                selected=defaultNodeFlavor
+                content=nodeFlavorChoices
+                value=config.nodeFlavor}}
             {{/input-or-display}}
           </div>
           <div class="col span-6 mb-0">
@@ -411,12 +412,11 @@
           </div>
           <div class="col span-6 mb-0">
             <label>{{t 'cluster.availabilityZone.label'}}{{field-required}}</label>
-            {{#input-or-display
-                    editable=(eq mode "new")
-                    value=config.availabilityZone}}
-              {{new-select class="form-control"
-                           content=azChoices
-                           value=config.availabilityZone
+            {{#input-or-display editable=(eq mode "new")  value=config.availabilityZone}}
+              {{searchable-select
+                class="form-control"
+                content=azChoices
+                value=config.availabilityZone
               }}
             {{/input-or-display}}
           </div>

@@ -113,7 +113,7 @@ const networkModes = [
 const defaultNetworkMode = 'overlay_l2'
 
 
-const groupInfoRe = /([\w-]+\d+)\((\w+)\)/
+const groupInfoRe = /^(.*?)\((.*?)\)$/
 const normal = 'normal'
 
 const tokenAuth = 'token'
@@ -298,7 +298,7 @@ const languages = {
       ),
       nodeFlavor:              field(
         'Node Flavor',
-        '',
+        'Please select availability zone first',
         `See ${instanceFlavorReference} for available flavors`,
       ),
       nodeOs:                  field('Node OS'),
