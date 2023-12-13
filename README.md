@@ -1,17 +1,35 @@
 # ui-cluster-driver-otc
 
-OpenTelekomCloud CCE driver for Rancher
+Frontend part of OpenTelekomCloud CCE driver for Rancher
 
-## Installation
+Backend part:
+ - https://github.com/opentelekomcloud/kontainer-engine-driver-otc
 
-1. Go to the `Cluster Drivers` management screen in Rancher and click `Add Cluster Driver`.
-2. Enter Download URL:
-    1) Using exact version: `https://github.com/opentelekomcloud/kontainer-engine-driver-otc/releases/download/VERSION/kontainer-engine-driver-otc-VERSION-linux-amd64.tgz`
-    2) Using latest version: `https://otc-rancher.obs.eu-de.otc.t-systems.com/cluster/driver/latest/kontainer-engine-driver-otccce_linux_amd64.tar.gz`
-3. Enter the Custom UI URL: `https://otc-rancher.obs.eu-de.otc.t-systems.com/cluster/ui/latest/component.js`.
-4. Add Whitelist Domains with value `*.otc.t-systems.com`.
-5. Click `Create`, and wait for driver status to be `Active`.
-6. Cluster driver for OpenTelekomCloud CCE service will be available to use on the `Add Cluster` screen.
+Depends-On:
+ - https://github.com/opentelekomcloud/oms
+   OMS - micro JS sdk to manage OTC resources such as `VPC`, `SUBNETS`, `FLAVORS`, `KEYPAIRS` and supports different types of authorizations like `token` and `ak/sk`.
+
+## Adding/Updating driver
+1. Open `Rancher`
+2. Go to the `Cluster Drivers` management screen in Rancher.
+
+   <img src="https://otc-rancher.obs.eu-de.otc.t-systems.com/helpers/cluster-mgmt.png" alt="image" style="width:150px;height:auto;">
+3. Go to `Drivers` -> `Cluster Drivers` and search for `Open Telekom Cloud CCE` click three dotted menu and then `Edit`
+   <img src="https://otc-rancher.obs.eu-de.otc.t-systems.com/helpers/cluster_drivers.png" alt="image" style="width:1000px;height:auto;">
+4. or you can just click `Add Cluster Driver`.
+5. Enter Download URL:
+   1) Using exact version: `https://otc-rancher.obs.eu-de.otc.t-systems.com/cluster/driver/1.1.1/kontainer-engine-driver-otccce_linux_amd64.tar.gz`
+   2) Using the latest version: `https://otc-rancher.obs.eu-de.otc.t-systems.com/cluster/driver/latest/kontainer-engine-driver-otccce_linux_amd64.tar.gz`
+6. Enter the Custom UI URL:
+   1) Using exact version: `https://otc-rancher.obs.eu-de.otc.t-systems.com/cluster/ui/v1.2.0/component.js`.
+   2) Or latest: `https://otc-rancher.obs.eu-de.otc.t-systems.com/cluster/ui/latest/component.js`.
+7. Add Whitelist Domains with value `*.otc.t-systems.com`.
+
+   <img src="https://otc-rancher.obs.eu-de.otc.t-systems.com/helpers/edit_cluster_driver.png" alt="image" style="width:600px;height:auto;">
+
+8. Click `Save` if you are in edit mode of existing driver or `Create` for new one, and wait for driver status to be `Active`.
+9. Cluster driver for OpenTelekomCloud CCE service will be available to use on the `Cluster:Create` screen.
+   <img src="https://otc-rancher.obs.eu-de.otc.t-systems.com/helpers/cluster_create.png" alt="image" style="width:1000px;height:auto;">
 
 ## Usage
 
@@ -19,13 +37,13 @@ Select `Open Telekom Cloud CCE` on cluster creation page, this will start cluste
 
 You can create VPC, subnet and floating IP during the cluster configuration.
 
-After cluster is created, you can resize it.
+After cluster is created, you can manipulate it.
 
-**Note:** this is the first stable version and it contain now yet known problems and miss some required features. It this case, please report the issue to https://github.com/opentelekomcloud/ui-cluster-driver-otc/issues.
+**Note:** Please report the issues to https://github.com/opentelekomcloud/ui-cluster-driver-otc/issues.
 
 ## License
 
-Copyright 2020 T-Systems GmbH
+Copyright 2023 T-Systems GmbH
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
