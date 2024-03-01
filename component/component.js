@@ -63,7 +63,8 @@ const clusterTypes = [
   },
 ]
 const regions = ['eu-de', 'eu-nl', 'eu-ch2']
-const diskTypes = ['SATA', 'SAS', 'SSD']
+const diskTypesAll = ['SATA', 'SAS', 'SSD']
+const diskTypesCH = ['SAS', 'SSD']
 const availabilityZonesDE = [
   'eu-de-01',
   'eu-de-02',
@@ -183,7 +184,7 @@ function azs(region) {
 }
 
 /**
- * Return proper supporte os based on cluster version
+ * Return proper support os based on cluster version
  * @param clusterVersion {string}
  * @returns {string[]}
  */
@@ -195,6 +196,22 @@ function osList(clusterVersion) {
     result = nodeOs
   }
   return result
+}
+
+/**
+ * Return proper disk types based on region
+ * @param region {string}
+ * @returns {string[]}
+ */
+function diskTypesList(region) {
+  let disks
+  if (region === 'eu-de' || region === 'eu-nl') {
+    disks = diskTypesAll
+  }
+  if (region === 'eu-ch2'){
+    disks = diskTypesCH
+  }
+  return disks
 }
 
 function field(label, placeholder = '', detail = '') {
@@ -445,8 +462,8 @@ export default Ember.Component.extend(ClusterDriver, {
         // node disks
         rootVolumeSize: 40,
         dataVolumeSize: 100,
-        rootVolumeType: diskTypes[0],
-        dataVolumeType: diskTypes[0],
+        rootVolumeType: '',
+        dataVolumeType: '',
         // LB config
         createLoadBalancer: false,
       });
@@ -638,7 +655,11 @@ export default Ember.Component.extend(ClusterDriver, {
   }),
   clusterVersionChoices: m2f(k8sVersions),
   clusterTypeChoices:    clusterTypes,
-  diskTypeChoices:       a2f(diskTypes),
+  diskTypeChoices:       computed('config.region', function () {
+    const r = String(get(this, 'config.region'))
+    console.log(`Region changed to ${r}. Checking available disk types choices... `)
+    return a2f(diskTypesList(r))
+  }),
   networkModeChoices:    computed('config.clusterType', function () {
     const type = String(get(this, 'config.clusterType'))
     console.log(`Cluster type changed to ${type}. Checking available mode choices... `)
