@@ -205,10 +205,7 @@ function osList(clusterVersion) {
  */
 function diskTypesList(region) {
   let disks
-  if (region === 'eu-de'){
-    disks = diskTypesAll
-  }
-  if (region === 'eu-nl'){
+  if (region === 'eu-de' || region === 'eu-nl') {
     disks = diskTypesAll
   }
   if (region === 'eu-ch2'){
