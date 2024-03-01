@@ -63,7 +63,8 @@ const clusterTypes = [
   },
 ]
 const regions = ['eu-de', 'eu-nl', 'eu-ch2']
-const diskTypes = ['SATA', 'SAS', 'SSD']
+const diskTypesAll = ['SATA', 'SAS', 'SSD']
+const diskTypesCH = ['SAS', 'SSD']
 const availabilityZonesDE = [
   'eu-de-01',
   'eu-de-02',
@@ -198,18 +199,22 @@ function osList(clusterVersion) {
 }
 
 /**
- * Return proper support disks based on region
+ * Return proper disk types based on region
  * @param region {string}
  * @returns {string[]}
  */
 function diskTypesList(region) {
-  let result
-  if (region === 'eu-ch2'){
-    result = diskTypes.filter(item => item !== 'SATA')
-  } else {
-    result = diskTypes
+  let disks
+  if (region === 'eu-de'){
+    disks = diskTypesAll
   }
-  return result
+  if (region === 'eu-nl'){
+    disks = diskTypesAll
+  }
+  if (region === 'eu-ch2'){
+    disks = diskTypesCH
+  }
+  return disks
 }
 
 function field(label, placeholder = '', detail = '') {
