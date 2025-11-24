@@ -4,6 +4,8 @@
     name: js-build-ubuntu
     parent: js-build
     nodeset: ubuntu-jammy
+    vars:
+      node_version: v20.19.3
 
 - project:
     merge-mode: squash-merge
