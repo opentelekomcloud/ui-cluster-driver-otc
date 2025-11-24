@@ -3,7 +3,9 @@
 - job:
     name: js-build-ubuntu
     parent: js-build
-    nodeset: ubuntu-focal
+    nodeset: ubuntu-jammy
+    vars:
+      node_version: 20
 
 - project:
     merge-mode: squash-merge
