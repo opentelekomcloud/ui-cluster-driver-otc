@@ -2,6 +2,8 @@
 
 Frontend part of OpenTelekomCloud CCE driver for Rancher
 
+**Note**: Support for UI Plugins (based on Ember) for cluster and node drivers was deprecated in Rancher 2.11.0 and will be removed in a future release.
+
 Backend part:
  - https://github.com/opentelekomcloud/kontainer-engine-driver-otc
 

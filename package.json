@@ -1,11 +1,21 @@
 {
-  "name": "ui-cluster-driver-otccce",
-  "version": "1.1.2-rc.1",
+  "name": "@opentelekomcloud/ui-cluster-driver-otccce",
+  "version": "1.1.3",
   "description": "OpenTelekomCloud CCE driver",
   "repository": {
     "type": "git",
     "url": "https://github.com/opentelekomcloud/ui-cluster-driver-otc"
   },
+  "publishConfig": {
+    "access": "public"
+  },
+  "files": [
+    "dist/",
+    "component/",
+    "assets/",
+    "README.md",
+    "LICENSE"
+  ],
   "author": "T-Systems GmbH",
   "license": "Apache-2.0",
   "bugs": {
